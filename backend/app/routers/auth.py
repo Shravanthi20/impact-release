@@ -65,16 +65,16 @@ def login(body: LoginIn, session: Session = Depends(get_session)):
     clean_email = body.email.strip().lower()
     user = session.exec(select(User).where(User.email == clean_email)).first()
 
-    # Pre-configured demo seed accounts or fallback matching
     if not user:
-        if clean_email == "donor@demo.impactrelease.org":
-            user = User(role="donor", name="Asha Foundation (Sponsor)", email=clean_email)
+        # Default accounts on fresh install
+        if clean_email == "sponsor@impactrelease.org":
+            user = User(role="donor", name="Grant Sponsor Organization", email=clean_email)
             session.add(user); session.commit(); session.refresh(user)
-        elif clean_email == "ngo@demo.impactrelease.org":
-            user = User(role="ngo", name="Vidya Grassroots Trust", email=clean_email, paypal_email="vidya-ngo@sandbox.paypal.com")
+        elif clean_email == "ngo@impactrelease.org":
+            user = User(role="ngo", name="Field Partner Organization", email=clean_email, paypal_email="field-disbursals@sandbox.paypal.com")
             session.add(user); session.commit(); session.refresh(user)
-        elif clean_email == "admin@demo.impactrelease.org":
-            user = User(role="reviewer", name="Chief Compliance Officer", email=clean_email)
+        elif clean_email == "admin@impactrelease.org":
+            user = User(role="reviewer", name="Compliance Review Officer", email=clean_email)
             session.add(user); session.commit(); session.refresh(user)
         else:
             raise HTTPException(401, "Invalid email or password")

@@ -109,21 +109,14 @@ export default function LandingPage({ onGetStarted, onExplorePublic }) {
               onClick={() => onGetStarted("donor")}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-terracotta-600 hover:bg-terracotta-500 text-white font-bold text-sm transition shadow-md shadow-terracotta-900/30 cursor-pointer"
             >
-              <span>Sponsor Workspace</span>
+              <span>Get Started as Sponsor</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => onGetStarted("ngo")}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-forest-800 hover:bg-forest-700 text-forest-100 font-bold text-sm border border-forest-700 transition cursor-pointer"
             >
-              <span>NGO Partner Portal</span>
-            </button>
-            <button
-              onClick={onExplorePublic}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-warmgray-800/80 hover:bg-warmgray-700 text-warmgray-200 font-semibold text-sm border border-warmgray-700 transition cursor-pointer"
-            >
-              <Globe className="w-4 h-4 text-forest-300" />
-              <span>Public Disbursement Ledger</span>
+              <span>Register as Field Partner</span>
             </button>
           </div>
         </div>

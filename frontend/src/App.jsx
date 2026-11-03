@@ -1,13 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ShieldCheck,
-  Globe,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
   LogIn,
   LogOut,
-  Compass,
+  ArrowRight,
 } from "lucide-react";
 import {
   api,
@@ -28,8 +26,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalRole, setAuthModalRole] = useState("donor");
-  const [viewingPublicPortal, setViewingPublicPortal] = useState(false);
-  const [viewingVerifierPortal, setViewingVerifierPortal] = useState(false);
 
   const [health, setHealth] = useState(null);
   const [users, setUsers] = useState([]);
@@ -80,8 +76,6 @@ export default function App() {
   function handleLoginSuccess(user) {
     setCurrentUser(user);
     setShowAuthModal(false);
-    setViewingPublicPortal(false);
-    setViewingVerifierPortal(false);
     notify(`Signed in as ${user.name}`);
     refreshAll();
   }
@@ -90,8 +84,6 @@ export default function App() {
     setAuthToken("");
     setStoredUser(null);
     setCurrentUser(null);
-    setViewingPublicPortal(false);
-    setViewingVerifierPortal(false);
     notify("Signed out");
   }
 
@@ -99,8 +91,6 @@ export default function App() {
     setAuthModalRole(role);
     setShowAuthModal(true);
   }
-
-  const isLandingView = !currentUser && !viewingPublicPortal && !viewingVerifierPortal;
 
   const kpis = useMemo(() => {
     const totalFunded = projects.reduce((acc, p) => acc + (p.funded || 0), 0);
@@ -124,8 +114,10 @@ export default function App() {
           {/* Brand Logo & Name */}
           <button
             onClick={() => {
-              setViewingPublicPortal(false);
-              setViewingVerifierPortal(false);
+              if (currentUser) {
+                // Stay on user's dashboard or refresh
+                refreshAll();
+              }
             }}
             className="flex items-center gap-3 text-left focus:outline-none cursor-pointer"
           >
@@ -142,36 +134,8 @@ export default function App() {
             </div>
           </button>
 
-          {/* Right Action Navigation */}
+          {/* Right Action Navigation - Clean & Focused */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setViewingPublicPortal(true);
-                setViewingVerifierPortal(false);
-              }}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                viewingPublicPortal
-                  ? "bg-forest-950 text-forest-300 ring-1 ring-forest-500/40"
-                  : "text-warmgray-300 hover:text-white hover:bg-warmgray-800"
-              }`}
-            >
-              Public Transparency
-            </button>
-
-            <button
-              onClick={() => {
-                setViewingVerifierPortal(true);
-                setViewingPublicPortal(false);
-              }}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                viewingVerifierPortal
-                  ? "bg-amber-950 text-amber-300 ring-1 ring-amber-500/40"
-                  : "text-warmgray-300 hover:text-white hover:bg-warmgray-800"
-              }`}
-            >
-              Verifier Sign-Off
-            </button>
-
             {currentUser ? (
               <div className="flex items-center gap-2 pl-3 border-l border-warmgray-800">
                 <div className="text-right hidden sm:block">
@@ -180,10 +144,10 @@ export default function App() {
                   </div>
                   <div className="text-[10px] text-forest-400 font-semibold uppercase tracking-wide">
                     {currentUser.role === "donor"
-                      ? "Grant Sponsor"
+                      ? "Sponsor Dashboard"
                       : currentUser.role === "ngo"
-                      ? "NGO Partner"
-                      : "Compliance Admin"}
+                      ? "NGO Partner Dashboard"
+                      : "Compliance Admin Console"}
                   </div>
                 </div>
                 <button
@@ -196,14 +160,14 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 pl-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleOpenAuth("donor")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-terracotta-600 hover:bg-terracotta-500 text-white transition shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-terracotta-600 hover:bg-terracotta-500 text-white transition shadow-sm cursor-pointer"
                 >
                   <LogIn className="w-3.5 h-3.5" />
-                  Sign In
+                  Sign In / Register
                 </button>
               </div>
             )}
@@ -211,17 +175,17 @@ export default function App() {
         </div>
 
         {/* Role context breadcrumb if authenticated */}
-        {currentUser && !viewingPublicPortal && !viewingVerifierPortal && (
+        {currentUser && (
           <div className="bg-warmgray-950/90 border-t border-warmgray-800/80 px-4 sm:px-6 lg:px-8 py-2">
             <div className="max-w-7xl mx-auto flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-warmgray-300">
                 <span className="font-semibold text-terracotta-400 uppercase tracking-wider text-[10px]">
-                  Active Workspace:
+                  Workspace:
                 </span>
                 <span className="font-bold text-white">
-                  {currentUser.role === "donor" && "Sponsor Grant Portfolio & Milestone Contracting"}
-                  {currentUser.role === "ngo" && "NGO Field Delivery, Manifests & Verified Releases"}
-                  {currentUser.role === "reviewer" && "Compliance Review, Quarantines & Network Graph"}
+                  {currentUser.role === "donor" && "Grant Portfolio & Milestone Contracting"}
+                  {currentUser.role === "ngo" && "Field Deliverable Evidence & Tranche Releases"}
+                  {currentUser.role === "reviewer" && "Compliance Audits, Fraud Quarantines & Risk Graph"}
                 </span>
               </div>
               <button
@@ -268,72 +232,13 @@ export default function App() {
           </div>
         )}
 
-        {/* View 1: Landing Page */}
-        {isLandingView && (
-          <LandingPage
-            onGetStarted={(role) => handleOpenAuth(role)}
-            onExplorePublic={() => setViewingPublicPortal(true)}
-          />
-        )}
-
-        {/* View 2: Public Transparency Portal */}
-        {viewingPublicPortal && (
-          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-warmgray-200 pb-4">
-              <div>
-                <h1 className="text-xl font-bold text-warmgray-900 font-serif">
-                  Public Transparency &amp; Proof-of-Impact Portal
-                </h1>
-                <p className="text-xs text-warmgray-500 mt-0.5">
-                  Cryptographic evidence records, vendor verifications, and settled payouts open to all stakeholders.
-                </p>
-              </div>
-              <button
-                onClick={() => setViewingPublicPortal(false)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-warmgray-300 hover:bg-warmgray-100 transition cursor-pointer"
-              >
-                ← Back
-              </button>
-            </div>
-            <PublicWorkspace ledger={ledger} audit={audit} />
-          </div>
-        )}
-
-        {/* View 3: External Verifier Portal */}
-        {viewingVerifierPortal && (
-          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-warmgray-200 pb-4">
-              <div>
-                <h1 className="text-xl font-bold text-warmgray-900 font-serif">
-                  External Field Verifier &amp; Beneficiary Sign-Off
-                </h1>
-                <p className="text-xs text-warmgray-500 mt-0.5">
-                  Confirm delivery of supplies using single-use tokens, or report unfulfilled deliverables.
-                </p>
-              </div>
-              <button
-                onClick={() => setViewingVerifierPortal(false)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-warmgray-300 hover:bg-warmgray-100 transition cursor-pointer"
-              >
-                ← Back
-              </button>
-            </div>
-            <VerifierWorkspace
-              projects={projects}
-              activeInvites={activeInvites}
-              onInviteCreated={(newInvites) =>
-                setActiveInvites((prev) => [...newInvites, ...prev])
-              }
-              onRefresh={refreshAll}
-              notify={notify}
-            />
-          </div>
-        )}
-
-        {/* View 4: Authenticated Role-Specific Dashboards */}
-        {currentUser && !viewingPublicPortal && !viewingVerifierPortal && (
+        {/* View 1: Clean Landing Page for all unauthenticated visitors */}
+        {!currentUser ? (
+          <LandingPage onGetStarted={(role) => handleOpenAuth(role)} />
+        ) : (
+          /* View 2: Dedicated Role Dashboard for Authenticated User */
           <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-            {/* KPI Strip in Warm Organic Styling */}
+            {/* KPI Strip */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white border border-warmgray-200 rounded-2xl p-4 shadow-sm">
                 <span className="text-xs font-semibold text-warmgray-500">
@@ -388,7 +293,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Dedicated Role Dashboard */}
+            {/* Render ONLY the dashboard matching the logged-in user's role */}
             {currentUser.role === "donor" && (
               <DonorWorkspace
                 projects={projects}

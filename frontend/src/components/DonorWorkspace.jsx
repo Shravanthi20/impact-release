@@ -73,8 +73,8 @@ export default function DonorWorkspace({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             role: "donor",
-            name: "Asha Foundation",
-            email: "donor@ashafoundation.org",
+            name: "Grant Sponsor Organization",
+            email: "sponsor@impactrelease.org",
           }),
         });
         await api("/users", {
@@ -82,9 +82,9 @@ export default function DonorWorkspace({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             role: "ngo",
-            name: "Vidya Grassroots Trust",
-            email: "ngo@vidyatrust.org",
-            paypal_email: "vidya-ngo@sandbox.paypal.com",
+            name: "Field Partner Organization",
+            email: "field@impactrelease.org",
+            paypal_email: "field-disbursals@sandbox.paypal.com",
           }),
         });
         currentUsers = await api("/users");
@@ -134,7 +134,7 @@ export default function DonorWorkspace({
       const payout = await api(`/projects/${projectId}/release-holdback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actor: "Asha Foundation (Sponsor)" }),
+        body: JSON.stringify({ actor: "Grant Sponsor" }),
       });
       await onRefresh();
       notify(

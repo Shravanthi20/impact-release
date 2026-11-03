@@ -382,7 +382,7 @@ export default function NgoWorkspace({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            actor: "Vidya Grassroots Trust (NGO)",
+            actor: "NGO Field Partner",
             human_approved: false,
           }),
         });
