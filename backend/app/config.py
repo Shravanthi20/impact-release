@@ -43,5 +43,9 @@ class Settings(BaseSettings):
     elastic_index: str = "impactrelease-evidence"
     phash_hamming_threshold: int = 10
 
+    # Confirmations, rules engine & challenge window (Phase 5)
+    min_beneficiary_confirmations: int = 2
+    default_challenge_window_hours: float = 1.0
+
 
 settings = Settings()

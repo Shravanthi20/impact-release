@@ -41,7 +41,10 @@ class Milestone(SQLModel, table=True):
     tranche_amount: float
     payee_user_id: int = Field(foreign_key="user.id")
     evidence_requirements_json: str = "[]"
-    # PENDING -> APPROVED_FOR_RELEASE -> PAYOUT_SENT -> SETTLED | PAYOUT_FAILED
+    challenge_window_hours: float = 0.0
+    challenge_ends_at: Optional[datetime] = None
+    is_holdback: bool = False
+    # PENDING -> EVIDENCE_SUBMITTED -> ANALYZED -> CHALLENGE_WINDOW -> APPROVED_FOR_RELEASE -> PAYOUT_SENT -> SETTLED | PAYOUT_FAILED | DISPUTED | HUMAN_REVIEW | REJECTED
     status: str = "PENDING"
 
 
@@ -124,4 +127,44 @@ class Analysis(SQLModel, table=True):
     signals_json: str = "{}"
     score: float = 0.0  # verifier: confidence (0..1); skeptic: fraud_risk (0..1)
     explanation: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Confirmation(SQLModel, table=True):
+    """Independent third-party confirmation (vendor, beneficiary, or witness).
+    Only the SHA-256 hash of the invite token is stored."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    milestone_id: int = Field(foreign_key="milestone.id", index=True)
+    kind: str  # vendor | beneficiary | witness
+    contact_ref: str
+    token_hash: str = Field(index=True, unique=True)
+    status: str = "PENDING"  # PENDING | SUBMITTED
+    confirmed: Optional[bool] = None
+    reported_amount: Optional[float] = None
+    answers_json: str = "{}"
+    free_text: str = ""
+    matched: bool = False
+    flags_json: str = "[]"
+    created_at: datetime = Field(default_factory=utcnow)
+    responded_at: Optional[datetime] = None
+
+
+class ReleaseDecision(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    milestone_id: int = Field(foreign_key="milestone.id", index=True)
+    decision: str  # release | hold | review | reject
+    confidence: float = 0.0
+    rules_passed: bool = False
+    rules_json: str = "{}"
+    explanation: str = ""
+    decided_by: str = "agent"  # agent | human
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Dispute(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    milestone_id: int = Field(foreign_key="milestone.id", index=True)
+    raised_by: str
+    reason: str
+    status: str = "OPEN"  # OPEN | RESOLVED_RELEASE | RESOLVED_REJECT
     created_at: datetime = Field(default_factory=utcnow)

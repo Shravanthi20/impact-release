@@ -4,7 +4,7 @@ Programmable generosity: donors state an intent, AI agents turn it into verifiab
 check evidence from several independent angles, and release funds in tranches through
 **PayPal Payouts**, with an explained, public ledger.
 
-> Status: **Phase 4 complete** (PayPal funding/payout/webhooks/ledger, contract agent, challenge-code evidence capture, multimodal Verifier + adversarial Skeptic agents, perceptual-hash & Elastic duplicate search)..
+> Status: **Phase 5 complete** (PayPal funding/payout/webhooks/ledger, contract agent, challenge-code evidence capture, multimodal Verifier + Skeptic + duplicate search, third-party confirmations, deterministic rules engine, challenge window, disputes, and retention holdback)..
 > Fraud is made costlier and more likely to be caught. It is not eliminated.
 
 ## Run it locally
@@ -53,6 +53,12 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 - **Similarity & duplicate search** ([`similarity.py`](backend/app/services/similarity.py)): computes 64-bit perceptual difference hashes (`dHash`) so resized or recompressed duplicate photos are caught across all projects even when SHA-256 differs, plus receipt-text Jaccard similarity and optional Elasticsearch indexing/search (`SIMILARITY_BACKEND=elastic`).
 - **Adversarial Skeptic agent** ([`skeptic_agent.py`](backend/app/agents/skeptic_agent.py)): combines deterministic fraud signals (exact/near-duplicate images, missing challenge code, receipt amount mismatch, non-in-app capture) with an adversarial LLM pass. Deterministic rules set a floor on `fraud_risk` that the LLM can raise but never lower.
 
+## Phase 5: confirmations, rules engine, challenge window, and holdback
+- `POST /milestones/{id}/confirmations/invite` & `GET/POST /confirm/{token}`: single-use tokenized vendor, beneficiary, and witness confirmations (only SHA-256 token hashes are stored). Detects denials, reported amount mismatches, and rehearsed/identical beneficiary replies (`REHEARSED_CONFIRMATION`).
+- `POST/GET /milestones/{id}/decision`: runs the deterministic [`rules_engine.py`](backend/app/services/rules_engine.py) (`project_funded`, `challenge_code_verified`, `skeptic_cleared`, `independent_confirmation_met`, `no_open_disputes`, `within_auto_approval_limit`) and the [`release_agent.py`](backend/app/agents/release_agent.py). The LLM cannot upgrade a non-release rule outcome to `release`.
+- `POST /milestones/{id}/dispute`, `GET /review/queue`, & `POST /review/{id}/decision`: challenge window holds, dispute escalation, and human reviewer resolution.
+- `POST /projects/{id}/release-holdback`: releases the retained holdback tranche only after all regular milestones have settled with no open disputes.
+
 ## Roadmap
 | Phase | Scope | Status |
 |---|---|---|
@@ -61,8 +67,8 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 | 2 | Contract agent: intent to milestones | Done |
 | 3 | In-app capture, challenge codes, evidence hashing | Done |
 | 4 | Verifier + skeptic agents, perceptual-hash & Elastic duplicate search | Done |
-| 5 | Confirmations, rules engine, challenge window, holdback | Next |
-| 6 | Reviewer console and public ledger UI (AG Grid) | |
+| 5 | Confirmations, rules engine, challenge window, holdback | Done |
+| 6 | Reviewer console and public ledger UI (AG Grid) | Next |
 | 7 | Red-team eval and hardening | |
 | 8 | Docs, deploy to Render, demo video | |
 

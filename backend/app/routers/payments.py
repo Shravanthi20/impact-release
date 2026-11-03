@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from app.db.models import AuditLog, Funding, Milestone, Payout, Project, User
+from app.db.models import AuditLog, Funding, Milestone, Payout, Project, ReleaseDecision, User
 from app.db.session import get_session
 from app.services import release_service as rs
 from app.services.paypal_client import PayPalClient, PayPalError, get_paypal
@@ -26,6 +26,7 @@ class MilestoneIn(BaseModel):
     tranche_amount: float = Field(gt=0)
     payee_user_id: int
     evidence_requirements: list[str] = []
+    challenge_window_hours: float = Field(default=0.0, ge=0.0)
 
 
 class ProjectIn(BaseModel):
@@ -166,9 +167,25 @@ def public_ledger(session: Session = Depends(get_session)):
                         .join(Milestone, Milestone.id == Payout.milestone_id)
                         .join(Project, Project.id == Milestone.project_id)
                         .order_by(Payout.id.desc())).all()
-    return [{"payout_id": p.id, "project_id": pr.id, "milestone": m.title,
-             "amount": p.amount, "currency": p.currency, "status": p.status,
-             "created_at": p.created_at} for p, m, pr in rows]
+    out = []
+    for p, m, pr in rows:
+        dec = session.exec(
+            select(ReleaseDecision)
+            .where(ReleaseDecision.milestone_id == m.id)
+            .order_by(ReleaseDecision.id.desc())
+        ).first()
+        out.append({
+            "payout_id": p.id,
+            "project_id": pr.id,
+            "milestone": m.title,
+            "is_holdback": m.is_holdback,
+            "amount": p.amount,
+            "currency": p.currency,
+            "status": p.status,
+            "reason": dec.explanation if dec else "Verified milestone release",
+            "created_at": p.created_at,
+        })
+    return out
 
 
 @router.get("/audit")
