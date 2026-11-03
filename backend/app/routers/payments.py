@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
@@ -23,6 +25,7 @@ class MilestoneIn(BaseModel):
     description: str = ""
     tranche_amount: float = Field(gt=0)
     payee_user_id: int
+    evidence_requirements: list[str] = []
 
 
 class ProjectIn(BaseModel):
@@ -63,7 +66,9 @@ def create_project(body: ProjectIn, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(project)
     for i, m in enumerate(body.milestones, start=1):
-        session.add(Milestone(project_id=project.id, order_no=i, **m.model_dump()))
+        data = m.model_dump(exclude={"evidence_requirements"})
+        session.add(Milestone(project_id=project.id, order_no=i, **data,
+                              evidence_requirements_json=json.dumps(m.evidence_requirements)))
     rs.audit(session, "donor", "project_created", "project", project.id)
     session.commit()
     return get_project(project.id, session)

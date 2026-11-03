@@ -2,6 +2,7 @@ import os
 
 os.environ["DATABASE_URL"] = "sqlite://"  # in-memory
 os.environ["PAYPAL_MODE"] = "stub"
+os.environ["LLM_PROVIDER"] = "offline"  # tests never call a real LLM
 
 import pytest
 from fastapi.testclient import TestClient

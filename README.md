@@ -4,7 +4,7 @@ Programmable generosity: donors state an intent, AI agents turn it into verifiab
 check evidence from several independent angles, and release funds in tranches through
 **PayPal Payouts**, with an explained, public ledger.
 
-> Status: **Phase 1 complete** (PayPal funding, payout, webhooks, ledger, audit log).
+> Status: **Phase 2 complete** (PayPal funding/payout/webhooks/ledger, contract agent via free Gemini tier or offline fallback).
 > Fraud is made costlier and more likely to be caught. It is not eliminated.
 
 ## Run it locally
@@ -45,8 +45,8 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 |---|---|---|
 | 0 | Repo, license, config, stub PayPal | Done |
 | 1 | PayPal core: fund, payout, webhooks, ledger | Done |
-| 2 | Contract agent: intent to milestones | Next |
-| 3 | In-app capture, challenge codes, evidence hashing | |
+| 2 | Contract agent: intent to milestones | Done |
+| 3 | In-app capture, challenge codes, evidence hashing | Next |
 | 4 | Verifier + skeptic agents, Elastic duplicate search | |
 | 5 | Confirmations, rules engine, challenge window, holdback | |
 | 6 | Reviewer console and public ledger UI (AG Grid) | |

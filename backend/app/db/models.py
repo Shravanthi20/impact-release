@@ -40,6 +40,7 @@ class Milestone(SQLModel, table=True):
     description: str = ""
     tranche_amount: float
     payee_user_id: int = Field(foreign_key="user.id")
+    evidence_requirements_json: str = "[]"
     # PENDING -> APPROVED_FOR_RELEASE -> PAYOUT_SENT -> SETTLED | PAYOUT_FAILED
     status: str = "PENDING"
 
