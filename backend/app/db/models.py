@@ -168,3 +168,14 @@ class Dispute(SQLModel, table=True):
     reason: str
     status: str = "OPEN"  # OPEN | RESOLVED_RELEASE | RESOLVED_REJECT
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class RiskGraphEdge(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    a_type: str
+    a_id: str = Field(index=True)
+    b_type: str
+    b_id: str = Field(index=True)
+    relation: str
+    weight: float = 1.0
+    created_at: datetime = Field(default_factory=utcnow)

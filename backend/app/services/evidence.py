@@ -153,6 +153,9 @@ def create_submission(session: Session, milestone: Milestone, challenge_id: int,
     challenge.used = True
     milestone.status = "EVIDENCE_SUBMITTED"
     session.add_all([challenge, milestone])
+    from app.services.graph import record_submission_edges
+
+    record_submission_edges(session, submission)
     audit(session, f"user:{user_id}", "evidence_submitted", "milestone", milestone.id,
           submission_id=submission.id, files=len(items), flags=[f["flag"] for f in flags])
     session.commit()

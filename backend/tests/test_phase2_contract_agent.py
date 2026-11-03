@@ -48,6 +48,9 @@ def test_llm_output_is_validated_and_amounts_recomputed(monkeypatch):
 
 
 def test_invalid_llm_output_falls_back_to_offline(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "strict_gemini_only", False)
     monkeypatch.setattr(llm, "llm_available", lambda: True)
     monkeypatch.setattr(llm, "generate_json", lambda s, u: {"milestones": []})
     assert propose_contract(INTENT, 1000).source == "offline"

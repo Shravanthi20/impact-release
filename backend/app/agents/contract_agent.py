@@ -10,6 +10,7 @@ import re
 from pydantic import BaseModel, Field, ValidationError
 
 from app.agents import llm
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -129,9 +130,13 @@ def propose_contract(intent: str, budget: float, currency: str = "USD",
             draft = ContractDraftLLM.model_validate(raw)
             return _finalise(draft, budget, currency, holdback_pct, "llm")
         except llm.LLMError as e:
+            if settings.strict_gemini_only:
+                raise
             reason = f"AI model unavailable ({str(e)[:120]})"
             logger.warning("contract agent fell back to offline: %s", e)
         except ValidationError as e:
+            if settings.strict_gemini_only:
+                raise llm.LLMError(f"contract agent schema validation failed: {e}")
             reason = "AI model returned an invalid plan"
             logger.warning("contract agent output failed validation: %s", e)
     proposal = _finalise(_offline_draft(intent), budget, currency, holdback_pct, "offline")

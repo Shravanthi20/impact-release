@@ -7,6 +7,7 @@ an external service.
 import base64
 import json
 import re
+import time
 from typing import Any
 
 import httpx
@@ -36,15 +37,18 @@ def llm_available() -> bool:
 def generate_json(
     system: str, user: str, images: list[tuple[str, bytes]] | None = None
 ) -> Any:
-    """Return parsed JSON from the configured provider, trying fallback models on failure.
-    ``images`` is an optional list of (mime_type, raw_bytes) pairs for multimodal calls.
-    Raises LLMError if every model fails."""
+    """Return parsed JSON from the Gemini API, retrying the primary model before trying fallbacks.
+    Raises LLMError if every attempt fails."""
     if not llm_available():
         raise LLMError("no LLM provider configured")
-    models = [settings.gemini_model] + [m.strip() for m in settings.gemini_fallback_models.split(",")
-                                       if m.strip()]
+    primary = settings.gemini_model
+    fallbacks = [m.strip() for m in settings.gemini_fallback_models.split(",") if m.strip()]
+    # Retry primary model twice (with brief backoff for RPM spikes) before trying fallback models.
+    attempts = [primary, primary] + [m for m in fallbacks if m != primary]
     errors = []
-    for model in dict.fromkeys(models):
+    for idx, model in enumerate(attempts):
+        if idx > 0:
+            time.sleep(1.2 * idx)
         try:
             return _call_gemini(model, system, user, images=images)
         except LLMError as e:
@@ -70,7 +74,7 @@ def _call_gemini(
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
     }
     try:
-        r = httpx.post(url, params={"key": settings.gemini_api_key}, json=body, timeout=45)
+        r = httpx.post(url, params={"key": settings.gemini_api_key}, json=body, timeout=18)
     except httpx.HTTPError as e:
         raise LLMError(f"request failed: {e}")
     if r.status_code != 200:

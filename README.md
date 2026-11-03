@@ -4,7 +4,7 @@ Programmable generosity: donors state an intent, AI agents turn it into verifiab
 check evidence from several independent angles, and release funds in tranches through
 **PayPal Payouts**, with an explained, public ledger.
 
-> Status: **Phase 6 complete** (Full-stack web UI + AG Grid Reviewer Console & Public Ledger, one-click Demo Scenario seeder, PayPal funding/payout/webhooks, Contract/Verifier/Skeptic/Release agents, perceptual-hash & Elastic duplicate search, confirmations, rules engine, challenge window, and holdback)..
+> Status: **All 8 Phases Complete** (Full-stack web UI + AG Grid Reviewer Console & Public Ledger, Gemini Contract/Verifier/Skeptic/Release agents with `STRICT_GEMINI_ONLY` enforcement, PayPal Orders/Payouts/Webhooks, 64-bit perceptual dHash & Elastic duplicate search, third-party confirmations, deterministic rules engine, challenge window, retention holdback, 12-case Red-Team benchmark, Network Collusion Graph, Render & Docker configs, and Postman collection)..
 > Fraud is made costlier and more likely to be caught. It is not eliminated.
 
 ## Run it locally
@@ -64,6 +64,12 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 - **1-Click Showcase Seeder** (`POST /demo/seed`): populates a 3-milestone project demonstrating (1) a verified, vendor-confirmed, settled PayPal payout in the Public Ledger, (2) a near-duplicate resized photo + receipt mismatch caught by the Skeptic Agent, and (3) a challenge-window beneficiary dispute.
 - **AG Grid Reviewer Console & Public Ledger**: interactive filterable grids with fraud-risk highlighting, side-panel evidence/dispute resolution, quick search, and CSV export.
 
+## Phase 7 & 8: Red-Team Benchmark, Collusion Graph, Deployment & Docs
+- **Red-Team Evaluation Suite** (`POST /eval/redteam/run`, [`eval/run_redteam.py`](eval/run_redteam.py), [`eval/results.md`](eval/results.md)): runs 12 synthetic scenarios (9 attack vectors + 3 legitimate baselines) across all defense layers.
+- **Network Collusion Graph** (`GET /graph/risk`, [`graph.py`](backend/app/services/graph.py)): flags shared devices across distinct NGO accounts (`SHARED_DEVICE_ACROSS_NGOS`) and repeat confirmers across projects (`REPEAT_CONFIRMER_ACROSS_PROJECTS`).
+- **Strict Gemini Enforcement**: when `LLM_PROVIDER=gemini` and `STRICT_GEMINI_ONLY=true` (default), all 4 agents (`Contract`, `Verifier`, `Skeptic`, `Release`) execute exclusively via the Google Gemini API; verified end-to-end with [`backend/scripts/verify_all_gemini_agents.py`](backend/scripts/verify_all_gemini_agents.py).
+- **Deployment & Tooling**: [`render.yaml`](render.yaml), [`Dockerfile`](Dockerfile), [`docker-compose.yml`](docker-compose.yml), [`postman/impactrelease.postman_collection.json`](postman/impactrelease.postman_collection.json), and [`docs/`](docs/).
+
 ## Roadmap
 | Phase | Scope | Status |
 |---|---|---|
@@ -74,8 +80,8 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 | 4 | Verifier + skeptic agents, perceptual-hash & Elastic duplicate search | Done |
 | 5 | Confirmations, rules engine, challenge window, holdback | Done |
 | 6 | Reviewer console and public ledger UI (AG Grid) | Done |
-| 7 | Red-team eval and hardening | Next |
-| 8 | Docs, deploy to Render, demo video | |
+| 7 | Red-team eval and network collusion graph | Done |
+| 8 | Docs, Render & Docker configs, Postman collection | Done |
 
 ## Limitations
 Sandbox prototype. Holding donor funds is regulated; a real deployment would use a registered

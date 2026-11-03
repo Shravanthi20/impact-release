@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field, ValidationError
 
 from app.agents import llm
+from app.config import settings
 from app.services.rules_engine import RuleEvaluation
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,8 @@ def decide_release(
                 explanation=parsed.explanation,
             )
         except (llm.LLMError, ValidationError) as e:
+            if settings.strict_gemini_only:
+                raise llm.LLMError(f"release agent Gemini call failed: {e}")
             logger.warning("release agent fell back to offline: %s", e)
 
     return ReleaseAgentOutput(

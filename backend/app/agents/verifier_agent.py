@@ -9,6 +9,7 @@ import re
 from pydantic import BaseModel, Field, ValidationError
 
 from app.agents import llm
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +68,16 @@ def _extract_ascii_strings(files: list[tuple[str, str, bytes]]) -> str:
 
 
 def _parse_receipt_amount(text: str) -> float | None:
-    m = re.search(r"(?:total|amount|paid|usd|\$)\s*[:=]?\s*\$?\s*(\d+(?:\.\d{1,2})?)", text, re.I)
-    if m:
-        try:
-            return float(m.group(1))
-        except ValueError:
-            return None
+    for pat in (
+        r"receipt\s+total\s*[:=]?\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+        r"(?:total|amount|paid)\s*[:=]\s*\$?\s*(\d+(?:\.\d{1,2})?)",
+    ):
+        m = re.search(pat, text, re.I)
+        if m:
+            try:
+                return float(m.group(1))
+            except ValueError:
+                pass
     return None
 
 
@@ -151,6 +156,8 @@ def verify_submission(
                 parsed.challenge_code_visible = False
             return VerifierResult(source="llm", **parsed.model_dump())
         except (llm.LLMError, ValidationError) as e:
+            if settings.strict_gemini_only:
+                raise llm.LLMError(f"verifier agent Gemini call failed: {e}")
             logger.warning("verifier agent fell back to offline: %s", e)
 
     return _offline_verify(evidence_requirements, expected_challenge_code, files)

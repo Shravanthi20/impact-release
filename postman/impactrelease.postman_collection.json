@@ -1,0 +1,61 @@
+{
+  "info": {
+    "name": "ImpactRelease API Collection",
+    "description": "End-to-end API flows for ImpactRelease: Contract Agent, PayPal Orders/Payouts, Challenge-Code Evidence Capture, Multimodal Verifier & Skeptic Agents, Third-Party Confirmations, Rules Engine, and Red-Team Evaluation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "2. Seed Showcase Demo Scenario",
+      "request": { "method": "POST", "url": "{{baseUrl}}/demo/seed" }
+    },
+    {
+      "name": "3. Draft Milestones from Donor Intent (Contract Agent)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/projects/intent",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"intent_text\": \"Fund school fees for 30 girls in Pune and make sure they attend this term\",\n  \"budget\": 1000,\n  \"currency\": \"USD\",\n  \"holdback_pct\": 10\n}"
+        }
+      }
+    },
+    {
+      "name": "4. List Projects & Tranches",
+      "request": { "method": "GET", "url": "{{baseUrl}}/projects" }
+    },
+    {
+      "name": "5. Issue 1-Time Challenge Code",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/milestones/1/challenge",
+        "body": { "mode": "raw", "raw": "{ \"user_id\": 2 }" }
+      }
+    },
+    {
+      "name": "6. Reviewer Console Queue (AG Grid Data)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/review/queue" }
+    },
+    {
+      "name": "7. Public Impact Ledger (AG Grid Data)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/ledger/public" }
+    },
+    {
+      "name": "8. Network Collusion Risk Graph",
+      "request": { "method": "GET", "url": "{{baseUrl}}/graph/risk" }
+    },
+    {
+      "name": "9. Run 12-Case Red-Team Benchmark",
+      "request": { "method": "POST", "url": "{{baseUrl}}/eval/redteam/run" }
+    }
+  ]
+}

@@ -1,9 +1,7 @@
 """Seeds a realistic end-to-end showcase dataset for the UI and judges."""
-import io
 import json
 
 from fastapi import APIRouter, Depends
-from PIL import Image, ImageDraw
 from sqlmodel import Session, select
 
 from app.db.models import Milestone, Project, User, utcnow
@@ -13,20 +11,9 @@ from app.services import evidence as ev
 from app.services import release_service as rs
 from app.services import verification as vf
 from app.services.paypal_client import PayPalClient, get_paypal
+from app.services.redteam import build_proof_image
 
 router = APIRouter()
-
-
-def _demo_image(seed: int, size: tuple[int, int], fmt: str, trailer: str) -> bytes:
-    base = Image.new("RGB", (120, 120), color=(242, 245, 250))
-    draw = ImageDraw.Draw(base)
-    for i in range(0, 120, 15):
-        color = ((i * 19 + seed * 37) % 255, (i * 11 + seed * 17) % 255, (i * 29) % 255)
-        draw.rectangle([i, (i // 2) % 60, i + 10, 110], fill=color)
-    img = base.resize(size, Image.Resampling.LANCZOS) if size != (120, 120) else base
-    buf = io.BytesIO()
-    img.save(buf, format=fmt)
-    return buf.getvalue() + b"\n" + trailer.encode("ascii")
 
 
 @router.post("/demo/seed")
@@ -112,7 +99,7 @@ def seed_demo_data(
 
     # Milestone 1: clean submission + vendor confirmation -> released & settled via webhook
     ch1 = ev.issue_challenge(session, m1, ngo.id)
-    img1 = _demo_image(202, (120, 120), "PNG", f"Challenge {ch1.code} | Receipt Total: $300.00")
+    img1 = build_proof_image(seed=202, size=(240, 180), fmt="PNG", code_text=ch1.code, receipt_amount=300.0)
     sub1, _ = ev.create_submission(
         session, m1, ch1.id, ngo.id, utcnow(),
         [("tuition_receipt.png", "image/png", img1)],
@@ -135,7 +122,7 @@ def seed_demo_data(
 
     # Milestone 2: reuses a resized JPEG of Milestone 1's photo + mismatched receipt -> flagged by Skeptic!
     ch2 = ev.issue_challenge(session, m2, ngo.id)
-    img2 = _demo_image(202, (160, 160), "JPEG", f"Challenge {ch2.code} | Receipt Total: $180.00")
+    img2 = build_proof_image(seed=202, size=(320, 240), fmt="JPEG", code_text=ch2.code, receipt_amount=180.0)
     sub2, _ = ev.create_submission(
         session, m2, ch2.id, ngo.id, utcnow(),
         [("uniforms_reused.jpg", "image/jpeg", img2)],
@@ -146,7 +133,7 @@ def seed_demo_data(
 
     # Milestone 3: clean submission + vendor confirm -> enters challenge window -> beneficiary raises dispute!
     ch3 = ev.issue_challenge(session, m3, ngo.id)
-    img3 = _demo_image(509, (120, 120), "PNG", f"Challenge {ch3.code} | Receipt Total: $250.00")
+    img3 = build_proof_image(seed=509, size=(240, 180), fmt="PNG", code_text=ch3.code, receipt_amount=250.0)
     sub3, _ = ev.create_submission(
         session, m3, ch3.id, ngo.id, utcnow(),
         [("attendance_register.png", "image/png", img3)],

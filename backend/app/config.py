@@ -20,12 +20,12 @@ class Settings(BaseSettings):
     paypal_base_url: str = "https://api-m.sandbox.paypal.com"
     app_base_url: str = "http://localhost:8000"
 
-    # LLM (free tier). LLM_PROVIDER=offline uses a deterministic fallback with no key.
-    llm_provider: str = "offline"  # offline | gemini
+    # LLM (free tier). LLM_PROVIDER=gemini calls the Google Gemini API.
+    llm_provider: str = "gemini"  # gemini | offline (used only by unit tests)
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.1-flash-lite"  # model availability changes; see scripts/list_models.py
-    # Tried in order if the primary model is overloaded, times out, or is retired.
-    gemini_fallback_models: str = "gemini-flash-latest,gemini-3.5-flash-lite"
+    gemini_model: str = "gemini-3.1-flash-lite"
+    gemini_fallback_models: str = "gemini-2.5-flash,gemini-3.8-flash"
+    strict_gemini_only: bool = True  # when llm_provider=='gemini', never silently use offline fallback
 
     # Release guardrails (Phase 5 will enforce more of these).
     human_approval_threshold: float = 500.0

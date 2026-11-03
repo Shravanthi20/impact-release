@@ -135,6 +135,9 @@ def submit_confirmation(
     conf.matched = bool(confirmed and not flags)
     conf.responded_at = utcnow()
     session.add(conf)
+    from app.services.graph import record_confirmation_edges
+
+    record_confirmation_edges(session, conf, milestone)
 
     # If a confirmer denied or triggered a rehearsal/contradiction flag, escalate milestone to review.
     if flags and milestone.status not in ("SETTLED", "PAYOUT_SENT"):
