@@ -23,7 +23,7 @@ export default function DonorWorkspace({
 
   // New Grant Form
   const [intentText, setIntentText] = useState(
-    "Fund school fees, textbooks, and attendance tracking for 30 girls in Pune this term"
+    "Construct a community solar water pump and distribution piping for 200 households in drought-affected drylands"
   );
   const [budget, setBudget] = useState(1000);
   const [holdbackPct, setHoldbackPct] = useState(10);
@@ -361,9 +361,12 @@ export default function DonorWorkspace({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Program Objective &amp; Target Beneficiaries
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  Program Objective &amp; Target Beneficiaries
+                </label>
+                <span className="text-[11px] text-teal-700 font-medium">Any Charitable Cause</span>
+              </div>
               <textarea
                 value={intentText}
                 onChange={(e) => setIntentText(e.target.value)}
@@ -371,6 +374,44 @@ export default function DonorWorkspace({
                 required
                 className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
               />
+              <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                <span className="text-[11px] text-slate-400 font-semibold mr-1">Quick cause presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setIntentText("Deliver 50 emergency flood relief food kits and medical kits to families in coastal villages")}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  🌊 Disaster Relief
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIntentText("Construct a community solar water pump and 2km distribution line for 200 rural households")}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  💧 Clean Water
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIntentText("Conduct 100 free pediatric cataract surgeries and post-operative vision follow-ups at mobile clinic")}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  🏥 Healthcare
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIntentText("Plant 1,000 native mangrove saplings and maintain seedling survival monitoring for 6 months")}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  🌱 Environment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIntentText("Fund school tuition, textbooks, and monthly attendance registers for 30 girls")}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                >
+                  📚 Education
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
