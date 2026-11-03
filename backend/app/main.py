@@ -1,9 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.db.session import init_db
-from app.routers import confirmations, contract, evidence, payments
+from app.routers import confirmations, contract, demo, evidence, payments
+
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
 
 @asynccontextmanager
@@ -17,6 +22,15 @@ app.include_router(payments.router)
 app.include_router(contract.router)
 app.include_router(evidence.router)
 app.include_router(confirmations.router)
+app.include_router(demo.router)
+
+if FRONTEND_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def root_ui():
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
 
 
 @app.get("/health")

@@ -4,7 +4,7 @@ Programmable generosity: donors state an intent, AI agents turn it into verifiab
 check evidence from several independent angles, and release funds in tranches through
 **PayPal Payouts**, with an explained, public ledger.
 
-> Status: **Phase 5 complete** (PayPal funding/payout/webhooks/ledger, contract agent, challenge-code evidence capture, multimodal Verifier + Skeptic + duplicate search, third-party confirmations, deterministic rules engine, challenge window, disputes, and retention holdback)..
+> Status: **Phase 6 complete** (Full-stack web UI + AG Grid Reviewer Console & Public Ledger, one-click Demo Scenario seeder, PayPal funding/payout/webhooks, Contract/Verifier/Skeptic/Release agents, perceptual-hash & Elastic duplicate search, confirmations, rules engine, challenge window, and holdback)..
 > Fraud is made costlier and more likely to be caught. It is not eliminated.
 
 ## Run it locally
@@ -59,6 +59,11 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 - `POST /milestones/{id}/dispute`, `GET /review/queue`, & `POST /review/{id}/decision`: challenge window holds, dispute escalation, and human reviewer resolution.
 - `POST /projects/{id}/release-holdback`: releases the retained holdback tranche only after all regular milestones have settled with no open disputes.
 
+## Phase 6: web UI, AG Grid Reviewer Console & Public Ledger
+- Served directly at `http://localhost:8000/` ([`frontend/index.html`](frontend/index.html), [`frontend/app.js`](frontend/app.js)).
+- **1-Click Showcase Seeder** (`POST /demo/seed`): populates a 3-milestone project demonstrating (1) a verified, vendor-confirmed, settled PayPal payout in the Public Ledger, (2) a near-duplicate resized photo + receipt mismatch caught by the Skeptic Agent, and (3) a challenge-window beneficiary dispute.
+- **AG Grid Reviewer Console & Public Ledger**: interactive filterable grids with fraud-risk highlighting, side-panel evidence/dispute resolution, quick search, and CSV export.
+
 ## Roadmap
 | Phase | Scope | Status |
 |---|---|---|
@@ -68,8 +73,8 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 | 3 | In-app capture, challenge codes, evidence hashing | Done |
 | 4 | Verifier + skeptic agents, perceptual-hash & Elastic duplicate search | Done |
 | 5 | Confirmations, rules engine, challenge window, holdback | Done |
-| 6 | Reviewer console and public ledger UI (AG Grid) | Next |
-| 7 | Red-team eval and hardening | |
+| 6 | Reviewer console and public ledger UI (AG Grid) | Done |
+| 7 | Red-team eval and hardening | Next |
 | 8 | Docs, deploy to Render, demo video | |
 
 ## Limitations

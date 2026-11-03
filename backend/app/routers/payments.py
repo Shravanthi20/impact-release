@@ -54,6 +54,28 @@ def create_user(body: UserIn, session: Session = Depends(get_session)):
     return user
 
 
+@router.get("/users")
+def list_users(session: Session = Depends(get_session)):
+    return session.exec(select(User).order_by(User.id)).all()
+
+
+@router.get("/projects")
+def list_projects(session: Session = Depends(get_session)):
+    projects = session.exec(select(Project).order_by(Project.id.desc())).all()
+    out = []
+    for p in projects:
+        ms = session.exec(
+            select(Milestone).where(Milestone.project_id == p.id).order_by(Milestone.order_no)
+        ).all()
+        out.append({
+            "project": p,
+            "milestones": ms,
+            "funded": rs.funded_amount(session, p.id),
+            "released": rs.released_amount(session, p.id),
+        })
+    return out
+
+
 # ---------- projects ----------
 @router.post("/projects")
 def create_project(body: ProjectIn, session: Session = Depends(get_session)):

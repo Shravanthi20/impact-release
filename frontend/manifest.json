@@ -1,0 +1,9 @@
+{
+  "name": "ImpactRelease — Programmable Generosity",
+  "short_name": "ImpactRelease",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#0f766e",
+  "description": "AI-verified milestone payouts via PayPal Payouts with adversarial fraud defense."
+}

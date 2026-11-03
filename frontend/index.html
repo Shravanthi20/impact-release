@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ImpactRelease — Programmable Generosity with PayPal & AI</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-grid.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/styles/ag-theme-quartz.css" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>ImpactRelease</h1>
+      <span class="tag">PayPal Payouts + Multi-Agent Anti-Fraud</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="btnSeedDemo" class="btn">Load Demo Scenario</button>
+      <button id="btnRefreshAll" class="btn secondary">Refresh Data</button>
+      <a href="/docs" target="_blank" style="color:#94a3b8;font-size:0.84rem;text-decoration:none;">OpenAPI /docs ↗</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="kpi-strip">
+      <div class="kpi-card">
+        <div class="label">Active Projects</div>
+        <div class="value" id="kpiProjects">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Total Funded (PayPal Orders)</div>
+        <div class="value" id="kpiFunded">$0.00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Total Released (PayPal Payouts)</div>
+        <div class="value" id="kpiReleased">$0.00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Flagged in Review Queue</div>
+        <div class="value" id="kpiReviewCount">0</div>
+      </div>
+    </section>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-donor">1. Donor &amp; Contract Agent</button>
+      <button class="tab-btn" data-tab="tab-ngo">2. NGO In-App Capture</button>
+      <button class="tab-btn" data-tab="tab-confirm">3. Confirmations &amp; Release Rules</button>
+      <button class="tab-btn" data-tab="tab-review">4. Reviewer Console (AG Grid)</button>
+      <button class="tab-btn" data-tab="tab-ledger">5. Public Ledger &amp; Audit (AG Grid)</button>
+    </nav>
+
+    <!-- TAB 1: DONOR -->
+    <section id="tab-donor" class="tab-panel active">
+      <div class="grid-2">
+        <div class="card">
+          <h2>State Your Giving Intent</h2>
+          <p class="sub">The Contract Agent compiles plain-language intent into verifiable milestones with mandatory challenge-code and third-party proof rules.</p>
+          <label for="donorIntent">Donor Intent</label>
+          <textarea id="donorIntent">Fund school fees for 30 girls in Pune and make sure they attend this term</textarea>
+          <div class="grid-2">
+            <div>
+              <label for="donorBudget">Total Budget (USD)</label>
+              <input id="donorBudget" type="number" value="1000" min="10" step="10" />
+            </div>
+            <div>
+              <label for="donorHoldback">Retention Holdback (%)</label>
+              <input id="donorHoldback" type="number" value="10" min="0" max="50" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button id="btnDraftContract" class="btn">Draft Milestones with Contract Agent</button>
+          </div>
+          <div id="draftMeta" style="margin-top:0.85rem;font-size:0.84rem;color:#334155;"></div>
+          <div id="draftMilestones" style="margin-top:0.75rem;"></div>
+          <div class="btn-row" id="approveContractRow" style="display:none;">
+            <button id="btnApproveAndFund" class="btn paypal">Approve Contract &amp; Fund via PayPal</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Projects &amp; Tranche Tracker</h2>
+          <p class="sub">Inspect funded projects, milestone statuses, and release the final retention holdback once all regular milestones settle.</p>
+          <label for="projectSelect">Select Project</label>
+          <select id="projectSelect"></select>
+          <div id="projectDetails" style="margin-top:0.85rem;"></div>
+          <div class="btn-row">
+            <button id="btnReleaseHoldback" class="btn secondary">Release Final Retention Holdback</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: NGO CAPTURE -->
+    <section id="tab-ngo" class="tab-panel">
+      <div class="grid-2">
+        <div class="card">
+          <h2>Step 1 — Request 1-Time Challenge Code</h2>
+          <p class="sub">Defeats pre-made or downloaded photos: the NGO must display this single-use, 30-minute challenge code inside the camera frame.</p>
+          <label for="ngoMilestoneSelect">Milestone to Prove</label>
+          <select id="ngoMilestoneSelect"></select>
+          <div class="btn-row">
+            <button id="btnIssueChallenge" class="btn">Issue 1-Time Challenge Code</button>
+          </div>
+          <div id="challengeBanner" class="challenge-banner" style="display:none;">
+            <div>
+              <div style="font-size:0.75rem;color:#94a3b8;">SHOW THIS CODE IN CAMERA FRAME</div>
+              <div class="challenge-code" id="challengeCodeDisplay">------</div>
+            </div>
+            <div style="text-align:right;font-size:0.78rem;color:#cbd5e1;">
+              <div>Challenge #<span id="challengeIdDisplay">-</span></div>
+              <div id="challengeExpiryDisplay"></div>
+            </div>
+          </div>
+
+          <h2 style="margin-top:1.2rem;">Step 2 — In-App Camera / Stamped Proof Capture</h2>
+          <p class="sub">Use your device camera or generate a challenge-stamped proof image to test the multimodal Verifier &amp; adversarial Skeptic agents.</p>
+          <label for="receiptAmountInput">Receipt Amount to Stamp on Proof (USD)</label>
+          <input id="receiptAmountInput" type="number" value="300" step="10" />
+          <label for="stampCodeToggle">
+            <input id="stampCodeToggle" type="checkbox" checked /> Include issued Challenge Code in captured frame
+          </label>
+          <canvas id="captureCanvas" width="360" height="220" class="preview-canvas"></canvas>
+          <div class="btn-row">
+            <button id="btnRenderProof" class="btn secondary">Render Proof Frame</button>
+            <button id="btnSubmitEvidence" class="btn">Submit In-App Evidence &amp; Run AI Verification</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Verifier &amp; Adversarial Skeptic Analysis</h2>
+          <p class="sub">Multimodal challenge-code check, 64-bit dHash near-duplicate image scan, and Skeptic fraud-risk floor.</p>
+          <div id="analysisOutput">
+            <p style="color:var(--muted);font-size:0.9rem;">Submit evidence on the left or select a milestone to inspect its Verifier &amp; Skeptic report.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CONFIRMATIONS & RULES -->
+    <section id="tab-confirm" class="tab-panel">
+      <div class="grid-2">
+        <div class="card">
+          <h2>Independent Third-Party Confirmation</h2>
+          <p class="sub">Issue a single-use token to a vendor, sampled beneficiary, or witness. Contradictions and rehearsed/identical replies are automatically flagged.</p>
+          <label for="confirmMilestoneSelect">Milestone</label>
+          <select id="confirmMilestoneSelect"></select>
+          <div class="grid-2">
+            <div>
+              <label for="confirmKind">Confirmer Role</label>
+              <select id="confirmKind">
+                <option value="vendor">Vendor / Supplier</option>
+                <option value="beneficiary">Beneficiary</option>
+                <option value="witness">Local Witness (Teacher / Clinic)</option>
+              </select>
+            </div>
+            <div>
+              <label for="confirmContact">Contact Reference</label>
+              <input id="confirmContact" type="text" value="Pune School Supplier Co." />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button id="btnCreateInvite" class="btn secondary">Generate Single-Use Confirmation Token</button>
+          </div>
+
+          <div id="confirmFormBox" style="margin-top:1rem;border-top:1px solid var(--border);padding-top:0.85rem;">
+            <label for="confirmTokenInput">Active Invite Token</label>
+            <input id="confirmTokenInput" type="text" placeholder="Generate an invite above..." />
+            <div class="grid-2">
+              <div>
+                <label for="confirmDecisionSelect">Did Delivery Happen as Promised?</label>
+                <select id="confirmDecisionSelect">
+                  <option value="true">Yes — Confirmed</option>
+                  <option value="false">No — Deny / Report Problem</option>
+                </select>
+              </div>
+              <div>
+                <label for="confirmReportedAmount">Reported Amount (USD)</label>
+                <input id="confirmReportedAmount" type="number" value="300" />
+              </div>
+            </div>
+            <label for="confirmFreeText">Verification Details (checked for rehearsed/duplicate wording)</label>
+            <input id="confirmFreeText" type="text" value="Delivered 30 sets of textbooks and uniforms on schedule." />
+            <div class="btn-row">
+              <button id="btnSubmitConfirmation" class="btn">Submit Confirmation</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Deterministic Rules Engine &amp; PayPal Payout Release</h2>
+          <p class="sub">All 6 hard checks must pass before the Release Agent can authorize a tranche payout.</p>
+          <div class="btn-row">
+            <button id="btnEvaluateRules" class="btn">Evaluate Release Rules &amp; Release Agent</button>
+            <button id="btnExecutePayout" class="btn paypal">Execute PayPal Payout</button>
+          </div>
+          <div id="decisionOutput" style="margin-top:0.9rem;"></div>
+
+          <div style="margin-top:1.1rem;border-top:1px solid var(--border);padding-top:0.85rem;">
+            <h2>Raise a Challenge-Window Dispute</h2>
+            <p class="sub">Any beneficiary, witness, or donor can freeze a milestone during its challenge window.</p>
+            <input id="disputeReasonInput" type="text" value="5 students in Ward 4 have not yet received their kits." />
+            <div class="btn-row">
+              <button id="btnRaiseDispute" class="btn danger">Raise Dispute &amp; Freeze Payout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: REVIEWER CONSOLE (AG GRID) -->
+    <section id="tab-review" class="tab-panel">
+      <div class="card">
+        <h2>Human Reviewer Console (Powered by AG Grid)</h2>
+        <p class="sub">Review only the cases flagged by the Skeptic Agent, Elastic/dHash duplicate detector, or Challenge Window disputes. Select a row to inspect and resolve.</p>
+        <div id="reviewGrid" class="ag-grid-box ag-theme-quartz"></div>
+        <div id="selectedReviewPanel" style="margin-top:1rem;"></div>
+      </div>
+    </section>
+
+    <!-- TAB 5: PUBLIC LEDGER & AUDIT (AG GRID) -->
+    <section id="tab-ledger" class="tab-panel">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+          <div>
+            <h2>Anonymised Public Impact Ledger (Powered by AG Grid)</h2>
+            <p class="sub">Every PayPal Payout tranche with its plain-language Release Agent explanation and zero personal PII.</p>
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <input id="ledgerFilterInput" type="text" placeholder="Filter ledger..." style="width:210px;" />
+            <button id="btnExportLedgerCsv" class="btn secondary">Export CSV</button>
+          </div>
+        </div>
+        <div id="ledgerGrid" class="ag-grid-box ag-theme-quartz"></div>
+      </div>
+
+      <div class="card">
+        <h2>Append-Only Security Audit Log</h2>
+        <p class="sub">Every challenge code, submission hash, agent score, confirmation, and PayPal event.</p>
+        <pre id="auditLogBox" class="pre-box">Loading audit trail...</pre>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.2/dist/ag-grid-community.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
