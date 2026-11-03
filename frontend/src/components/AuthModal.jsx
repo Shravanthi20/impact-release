@@ -11,7 +11,7 @@ import { api, setAuthToken, setStoredUser } from "../api.js";
 
 export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClose }) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [role, setRole] = useState(initialRole); // donor, ngo, reviewer
+  const [role, setRole] = useState(initialRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -27,6 +27,7 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
       desc: "Fund programs & approve milestones",
       email: "donor@ashafoundation.org",
       name: "Asha Foundation",
+      badge: "border-terracotta-200 bg-terracotta-50 text-terracotta-900",
     },
     {
       id: "ngo",
@@ -34,6 +35,7 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
       desc: "Submit field proof & get tranches",
       email: "ngo@vidyatrust.org",
       name: "Vidya Grassroots Trust",
+      badge: "border-forest-200 bg-forest-50 text-forest-900",
     },
     {
       id: "reviewer",
@@ -41,6 +43,7 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
       desc: "Audit claims & resolve fraud flags",
       email: "admin@compliance.org",
       name: "Risk & Compliance Officer",
+      badge: "border-plum-200 bg-plum-50 text-plum-900",
     },
   ];
 
@@ -91,27 +94,27 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-        {/* Modal Header */}
-        <div className="bg-slate-900 text-white p-6 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-warmgray-950/75 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white border border-warmgray-200 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden">
+        {/* Modal Header in Warm Dark Olive/Slate */}
+        <div className="bg-gradient-to-r from-warmgray-950 via-warmgray-900 to-warmgray-900 text-white p-6 relative">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-bold text-sm">
+            <div className="w-10 h-10 rounded-2xl bg-forest-900 border border-forest-500/40 flex items-center justify-center text-forest-300 font-bold text-sm">
               IR
             </div>
             <div>
-              <h2 className="text-lg font-bold">
-                {isSignUp ? "Create an Organization Account" : "Sign In to Your Workspace"}
+              <h2 className="text-base font-bold font-serif">
+                {isSignUp ? "Create Organization Account" : "Access Your Workspace"}
               </h2>
-              <p className="text-xs text-slate-400">
-                Secure Milestone Grant Escrow &amp; Field Verification
+              <p className="text-xs text-warmgray-400">
+                Milestone Grant Escrow &amp; Verifiable Disbursements
               </p>
             </div>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="absolute top-6 right-6 text-slate-400 hover:text-white text-base cursor-pointer"
+              className="absolute top-6 right-6 text-warmgray-400 hover:text-white text-base cursor-pointer"
             >
               ✕
             </button>
@@ -121,8 +124,8 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
         <div className="p-6 space-y-4">
           {!isSignUp && (
             <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                Select Your Registered Organization Role
+              <span className="text-[11px] font-bold uppercase tracking-wider text-warmgray-400 block">
+                Select Your Registered Role
               </span>
               <div className="grid grid-cols-3 gap-2">
                 {accounts.map((qr) => (
@@ -130,16 +133,16 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
                     key={qr.id}
                     type="button"
                     onClick={() => handleSelectPersona(qr)}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    className={`p-2.5 rounded-2xl border text-left transition cursor-pointer ${
                       role === qr.id && email === qr.email
-                        ? "border-teal-600 bg-teal-50 ring-1 ring-teal-600"
-                        : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
+                        ? "border-forest-600 bg-forest-50/70 ring-1 ring-forest-600"
+                        : "border-warmgray-200 hover:border-warmgray-300 bg-warmgray-50/50"
                     }`}
                   >
-                    <div className="font-bold text-xs text-slate-900 truncate">
+                    <div className="font-bold text-xs text-warmgray-900 truncate">
                       {qr.title}
                     </div>
-                    <div className="text-[10px] text-slate-500 line-clamp-1">
+                    <div className="text-[10px] text-warmgray-500 line-clamp-1">
                       {qr.name}
                     </div>
                   </button>
@@ -149,7 +152,7 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
           )}
 
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium">
               {error}
             </div>
           )}
@@ -158,17 +161,17 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
             {isSignUp && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-warmgray-700 mb-1">
                     Select Account Role
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setRole("donor")}
-                      className={`p-2 rounded-lg text-xs font-semibold border cursor-pointer ${
+                      className={`p-2 rounded-xl text-xs font-semibold border cursor-pointer ${
                         role === "donor"
-                          ? "bg-teal-700 text-white border-teal-700"
-                          : "bg-white text-slate-700 border-slate-300"
+                          ? "bg-terracotta-700 text-white border-terracotta-700"
+                          : "bg-white text-warmgray-700 border-warmgray-300"
                       }`}
                     >
                       Sponsor
@@ -176,10 +179,10 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
                     <button
                       type="button"
                       onClick={() => setRole("ngo")}
-                      className={`p-2 rounded-lg text-xs font-semibold border cursor-pointer ${
+                      className={`p-2 rounded-xl text-xs font-semibold border cursor-pointer ${
                         role === "ngo"
-                          ? "bg-teal-700 text-white border-teal-700"
-                          : "bg-white text-slate-700 border-slate-300"
+                          ? "bg-forest-700 text-white border-forest-700"
+                          : "bg-white text-warmgray-700 border-warmgray-300"
                       }`}
                     >
                       NGO Partner
@@ -187,20 +190,20 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
                     <button
                       type="button"
                       onClick={() => setRole("reviewer")}
-                      className={`p-2 rounded-lg text-xs font-semibold border cursor-pointer ${
+                      className={`p-2 rounded-xl text-xs font-semibold border cursor-pointer ${
                         role === "reviewer"
-                          ? "bg-teal-700 text-white border-teal-700"
-                          : "bg-white text-slate-700 border-slate-300"
+                          ? "bg-plum-700 text-white border-plum-700"
+                          : "bg-white text-warmgray-700 border-warmgray-300"
                       }`}
                     >
-                      Compliance Admin
+                      Admin
                     </button>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold text-warmgray-700 mb-1">
                       Contact Name
                     </label>
                     <input
@@ -208,36 +211,36 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Priya Sharma"
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
+                      placeholder="e.g. Elena Rostova"
+                      className="w-full text-xs px-3 py-2 border border-warmgray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-600"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Organization Name
+                    <label className="block text-xs font-semibold text-warmgray-700 mb-1">
+                      Organization
                     </label>
                     <input
                       type="text"
                       value={orgName}
                       onChange={(e) => setOrgName(e.target.value)}
-                      placeholder="e.g. Asha Foundation"
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
+                      placeholder="e.g. Grassroots Trust"
+                      className="w-full text-xs px-3 py-2 border border-warmgray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-600"
                     />
                   </div>
                 </div>
 
                 {role === "ngo" && (
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      PayPal Receiver Email (for Tranche Payouts)
+                    <label className="block text-xs font-semibold text-warmgray-700 mb-1">
+                      PayPal Receiver Email
                     </label>
                     <input
                       type="email"
                       required
                       value={paypalEmail}
                       onChange={(e) => setPaypalEmail(e.target.value)}
-                      placeholder="ngo-payouts@paypal.com"
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
+                      placeholder="field-disbursals@paypal.com"
+                      className="w-full text-xs px-3 py-2 border border-warmgray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-600"
                     />
                   </div>
                 )}
@@ -245,35 +248,35 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Email Address
+              <label className="block text-xs font-semibold text-warmgray-700 mb-1">
+                Organization Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Mail className="w-4 h-4 text-warmgray-400 absolute left-3 top-2.5" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="user@organization.org"
-                  className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  placeholder="contact@organization.org"
+                  className="w-full text-xs pl-9 pr-3 py-2 border border-warmgray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-600"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-warmgray-700 mb-1">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Lock className="w-4 h-4 text-warmgray-400 absolute left-3 top-2.5" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
+                  className="w-full text-xs pl-9 pr-3 py-2 border border-warmgray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-600"
                 />
               </div>
             </div>
@@ -281,10 +284,10 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
             <button
               type="submit"
               disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-warmgray-900 hover:bg-warmgray-800 text-white font-bold text-xs transition shadow-sm disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
-                "Authenticating..."
+                "Verifying credentials..."
               ) : isSignUp ? (
                 "Create Account & Proceed"
               ) : (
@@ -296,28 +299,27 @@ export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClo
             </button>
           </form>
 
-          {/* Toggle between Login and Signup */}
-          <div className="pt-2 text-center text-xs text-slate-500 border-t border-slate-100">
+          <div className="pt-2 text-center text-xs text-warmgray-500 border-t border-warmgray-100">
             {isSignUp ? (
               <span>
-                Already have an account?{" "}
+                Already registered?{" "}
                 <button
                   type="button"
                   onClick={() => setIsSignUp(false)}
-                  className="text-teal-700 font-bold hover:underline cursor-pointer"
+                  className="text-forest-700 font-bold hover:underline cursor-pointer"
                 >
                   Sign in
                 </button>
               </span>
             ) : (
               <span>
-                Need a new organization account?{" "}
+                Register a new organization?{" "}
                 <button
                   type="button"
                   onClick={() => setIsSignUp(true)}
-                  className="text-teal-700 font-bold hover:underline cursor-pointer"
+                  className="text-forest-700 font-bold hover:underline cursor-pointer"
                 >
-                  Register new account
+                  Create account
                 </button>
               </span>
             )}

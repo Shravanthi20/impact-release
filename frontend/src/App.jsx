@@ -1,18 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ShieldCheck,
-  Briefcase,
-  Camera,
-  UserCheck,
-  Scale,
   Globe,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
   LogIn,
   LogOut,
-  User,
-  ArrowRight,
+  Compass,
 } from "lucide-react";
 import {
   api,
@@ -105,11 +100,8 @@ export default function App() {
     setShowAuthModal(true);
   }
 
-  // Determine current active view:
-  // If not logged in and not exploring public or verifier, show Landing Page.
   const isLandingView = !currentUser && !viewingPublicPortal && !viewingVerifierPortal;
 
-  // KPIs for the logged in user's role
   const kpis = useMemo(() => {
     const totalFunded = projects.reduce((acc, p) => acc + (p.funded || 0), 0);
     const totalReleased = projects.reduce(
@@ -125,9 +117,9 @@ export default function App() {
   }, [projects, reviewQueue]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-warmgray-50 text-warmgray-900 flex flex-col font-sans">
       {/* Top Application Navbar */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
+      <header className="bg-warmgray-950 text-warmgray-100 border-b border-warmgray-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Brand Logo & Name */}
           <button
@@ -137,14 +129,14 @@ export default function App() {
             }}
             className="flex items-center gap-3 text-left focus:outline-none cursor-pointer"
           >
-            <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-extrabold text-sm shadow-inner">
+            <div className="w-9 h-9 rounded-xl bg-forest-900/90 border border-forest-500/40 flex items-center justify-center text-forest-300 font-black text-sm shadow-inner font-serif">
               IR
             </div>
             <div>
-              <span className="font-bold text-base tracking-tight text-white block">
+              <span className="font-bold text-base tracking-tight text-white block font-serif">
                 ImpactRelease
               </span>
-              <span className="text-[11px] text-slate-400 block leading-none">
+              <span className="text-[11px] text-warmgray-400 block leading-none">
                 Milestone Grant Escrow &amp; Verifiable Disbursements
               </span>
             </div>
@@ -152,16 +144,15 @@ export default function App() {
 
           {/* Right Action Navigation */}
           <div className="flex items-center gap-3">
-            {/* Quick Public Portal & Verifier Links */}
             <button
               onClick={() => {
                 setViewingPublicPortal(true);
                 setViewingVerifierPortal(false);
               }}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer ${
                 viewingPublicPortal
-                  ? "bg-slate-800 text-teal-300 ring-1 ring-teal-500/40"
-                  : "text-slate-300 hover:text-white hover:bg-slate-800"
+                  ? "bg-forest-950 text-forest-300 ring-1 ring-forest-500/40"
+                  : "text-warmgray-300 hover:text-white hover:bg-warmgray-800"
               }`}
             >
               Public Transparency
@@ -172,23 +163,22 @@ export default function App() {
                 setViewingVerifierPortal(true);
                 setViewingPublicPortal(false);
               }}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer ${
                 viewingVerifierPortal
-                  ? "bg-slate-800 text-teal-300 ring-1 ring-teal-500/40"
-                  : "text-slate-300 hover:text-white hover:bg-slate-800"
+                  ? "bg-amber-950 text-amber-300 ring-1 ring-amber-500/40"
+                  : "text-warmgray-300 hover:text-white hover:bg-warmgray-800"
               }`}
             >
               Verifier Sign-Off
             </button>
 
-            {/* Authenticated User Status or Sign-In Trigger */}
             {currentUser ? (
-              <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
+              <div className="flex items-center gap-2 pl-3 border-l border-warmgray-800">
                 <div className="text-right hidden sm:block">
-                  <div className="text-xs font-bold text-slate-200">
+                  <div className="text-xs font-bold text-warmgray-200">
                     {currentUser.name}
                   </div>
-                  <div className="text-[10px] text-teal-400 font-semibold uppercase tracking-wide">
+                  <div className="text-[10px] text-forest-400 font-semibold uppercase tracking-wide">
                     {currentUser.role === "donor"
                       ? "Grant Sponsor"
                       : currentUser.role === "ngo"
@@ -200,7 +190,7 @@ export default function App() {
                   type="button"
                   onClick={handleLogout}
                   title="Sign Out"
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 transition cursor-pointer"
+                  className="p-1.5 rounded-lg bg-warmgray-900 hover:bg-terracotta-950 hover:text-terracotta-300 text-warmgray-400 transition cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -210,7 +200,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => handleOpenAuth("donor")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-500 hover:bg-teal-400 text-slate-950 transition shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-terracotta-600 hover:bg-terracotta-500 text-white transition shadow-sm cursor-pointer"
                 >
                   <LogIn className="w-3.5 h-3.5" />
                   Sign In
@@ -222,25 +212,25 @@ export default function App() {
 
         {/* Role context breadcrumb if authenticated */}
         {currentUser && !viewingPublicPortal && !viewingVerifierPortal && (
-          <div className="bg-slate-950/70 border-t border-slate-800/80 px-4 sm:px-6 lg:px-8 py-2">
+          <div className="bg-warmgray-950/90 border-t border-warmgray-800/80 px-4 sm:px-6 lg:px-8 py-2">
             <div className="max-w-7xl mx-auto flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <span className="font-semibold text-teal-400 uppercase tracking-wider text-[10px]">
+              <div className="flex items-center gap-2 text-warmgray-300">
+                <span className="font-semibold text-terracotta-400 uppercase tracking-wider text-[10px]">
                   Active Workspace:
                 </span>
                 <span className="font-bold text-white">
-                  {currentUser.role === "donor" && "Sponsor Grant Portfolio & Milestone Contracts"}
-                  {currentUser.role === "ngo" && "NGO Field Delivery, Invoices & PayPal Tranche Payouts"}
-                  {currentUser.role === "reviewer" && "Admin Review, Fraud Quarantine & Collusion Graph"}
+                  {currentUser.role === "donor" && "Sponsor Grant Portfolio & Milestone Contracting"}
+                  {currentUser.role === "ngo" && "NGO Field Delivery, Manifests & Verified Releases"}
+                  {currentUser.role === "reviewer" && "Compliance Review, Quarantines & Network Graph"}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={refreshAll}
-                className="text-slate-400 hover:text-white inline-flex items-center gap-1 cursor-pointer"
+                className="text-warmgray-400 hover:text-white inline-flex items-center gap-1 cursor-pointer text-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh Data</span>
+                <span>Sync Data</span>
               </button>
             </div>
           </div>
@@ -256,21 +246,21 @@ export default function App() {
               className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-xs font-medium shadow-sm animate-fade-in ${
                 toast.type === "error"
                   ? "bg-rose-50 border-rose-200 text-rose-900"
-                  : "bg-teal-50 border-teal-200 text-teal-950"
+                  : "bg-forest-50 border-forest-200 text-forest-950"
               }`}
             >
               <div className="flex items-center gap-2">
                 {toast.type === "error" ? (
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-forest-700 shrink-0" />
                 )}
                 <span>{toast.message}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setToast(null)}
-                className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                className="text-warmgray-500 hover:text-warmgray-800 font-semibold cursor-pointer"
               >
                 Dismiss
               </button>
@@ -278,7 +268,7 @@ export default function App() {
           </div>
         )}
 
-        {/* View 1: Landing Page (For Unauthenticated Visitors) */}
+        {/* View 1: Landing Page */}
         {isLandingView && (
           <LandingPage
             onGetStarted={(role) => handleOpenAuth(role)}
@@ -289,18 +279,18 @@ export default function App() {
         {/* View 2: Public Transparency Portal */}
         {viewingPublicPortal && (
           <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+            <div className="flex items-center justify-between border-b border-warmgray-200 pb-4">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">
+                <h1 className="text-xl font-bold text-warmgray-900 font-serif">
                   Public Transparency &amp; Proof-of-Impact Portal
                 </h1>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Real-time cryptographic audit log and settled PayPal milestone payouts open to all stakeholders.
+                <p className="text-xs text-warmgray-500 mt-0.5">
+                  Cryptographic evidence records, vendor verifications, and settled payouts open to all stakeholders.
                 </p>
               </div>
               <button
                 onClick={() => setViewingPublicPortal(false)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 transition cursor-pointer"
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-warmgray-300 hover:bg-warmgray-100 transition cursor-pointer"
               >
                 ← Back
               </button>
@@ -309,21 +299,21 @@ export default function App() {
           </div>
         )}
 
-        {/* View 3: External Verifier / Beneficiary Attestation Portal */}
+        {/* View 3: External Verifier Portal */}
         {viewingVerifierPortal && (
           <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+            <div className="flex items-center justify-between border-b border-warmgray-200 pb-4">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">
+                <h1 className="text-xl font-bold text-warmgray-900 font-serif">
                   External Field Verifier &amp; Beneficiary Sign-Off
                 </h1>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Confirm receipt of goods/services using magic tokens, or file an unfulfilled work dispute.
+                <p className="text-xs text-warmgray-500 mt-0.5">
+                  Confirm delivery of supplies using single-use tokens, or report unfulfilled deliverables.
                 </p>
               </div>
               <button
                 onClick={() => setViewingVerifierPortal(false)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 transition cursor-pointer"
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-warmgray-300 hover:bg-warmgray-100 transition cursor-pointer"
               >
                 ← Back
               </button>
@@ -343,56 +333,56 @@ export default function App() {
         {/* View 4: Authenticated Role-Specific Dashboards */}
         {currentUser && !viewingPublicPortal && !viewingVerifierPortal && (
           <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-            {/* Executive KPI Strip */}
+            {/* KPI Strip in Warm Organic Styling */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">
+              <div className="bg-white border border-warmgray-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-warmgray-500">
                   Active Grant Programs
                 </span>
-                <div className="text-2xl font-extrabold text-slate-900 mt-1">
+                <div className="text-2xl font-black text-warmgray-900 mt-1 font-serif">
                   {kpis.grants}
                 </div>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-warmgray-500">
                   Milestone-escrowed contracts
                 </span>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">
-                  Escrow Balance (PayPal Orders)
+              <div className="bg-white border border-warmgray-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-warmgray-500">
+                  Escrow Balance
                 </span>
-                <div className="text-2xl font-extrabold text-slate-900 mt-1">
+                <div className="text-2xl font-black text-warmgray-900 mt-1 font-serif">
                   {formatCurrency(kpis.funded)}
                 </div>
-                <span className="text-[11px] text-emerald-700 font-medium">
+                <span className="text-[11px] text-forest-700 font-semibold">
                   Protected &amp; ring-fenced
                 </span>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">
-                  Disbursed (PayPal Payouts)
+              <div className="bg-white border border-warmgray-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-warmgray-500">
+                  Disbursed Tranches
                 </span>
-                <div className="text-2xl font-extrabold text-teal-700 mt-1">
+                <div className="text-2xl font-black text-forest-700 mt-1 font-serif">
                   {formatCurrency(kpis.released)}
                 </div>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-warmgray-500">
                   Released upon verified proof
                 </span>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                <span className="text-xs font-semibold text-slate-500">
-                  Pending Audit Reviews
+              <div className="bg-white border border-warmgray-200 rounded-2xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-warmgray-500">
+                  Pending Compliance Reviews
                 </span>
                 <div
-                  className={`text-2xl font-extrabold mt-1 ${
-                    kpis.quarantined > 0 ? "text-rose-600" : "text-slate-900"
+                  className={`text-2xl font-black mt-1 font-serif ${
+                    kpis.quarantined > 0 ? "text-terracotta-700" : "text-warmgray-900"
                   }`}
                 >
                   {kpis.quarantined}
                 </div>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-warmgray-500">
                   Flagged or disputed tranches
                 </span>
               </div>

@@ -9,6 +9,8 @@ import {
   Sparkles,
   FileCheck2,
   UserPlus,
+  Compass,
+  CheckCircle,
 } from "lucide-react";
 import { api, formatCurrency, statusBadgeClass } from "../api.js";
 
@@ -19,7 +21,7 @@ function generateFieldReceiptBlob(code, amount, milestoneTitle) {
     canvas.height = 420;
     const ctx = canvas.getContext("2d");
 
-    ctx.fillStyle = "#e7e2d8";
+    ctx.fillStyle = "#e6e2d8";
     ctx.fillRect(0, 0, 640, 420);
 
     ctx.fillStyle = "#ffffff";
@@ -28,62 +30,62 @@ function generateFieldReceiptBlob(code, amount, milestoneTitle) {
     ctx.lineWidth = 2;
     ctx.strokeRect(32, 28, 350, 364);
 
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 20px Inter, Arial, sans-serif";
-    ctx.fillText("PUNE EDUCATIONAL SUPPLIERS", 52, 68);
+    ctx.fillStyle = "#183e27";
+    ctx.font = "bold 18px Georgia, serif";
+    ctx.fillText("FIELD LOGISTICS & EQUIPMENT", 52, 68);
 
-    ctx.fillStyle = "#475569";
-    ctx.font = "13px Inter, Arial, sans-serif";
-    ctx.fillText("GSTIN: 27AABCP9912K1Z5  |  Tax Invoice", 52, 92);
+    ctx.fillStyle = "#474037";
+    ctx.font = "12px sans-serif";
+    ctx.fillText("Delivery Manifest & Tax Invoice", 52, 92);
     ctx.fillText(
-      `Milestone: ${(milestoneTitle || "Grant Delivery").slice(0, 32)}`,
+      `Deliverable: ${(milestoneTitle || "Grant Milestone").slice(0, 32)}`,
       52,
       118
     );
 
-    ctx.strokeStyle = "#e2e8f0";
+    ctx.strokeStyle = "#e6e2d8";
     ctx.beginPath();
     ctx.moveTo(52, 134);
     ctx.lineTo(362, 134);
     ctx.stroke();
 
-    ctx.fillStyle = "#1e293b";
-    ctx.font = "14px Inter, Arial, sans-serif";
-    ctx.fillText("1. Student Textbooks & Learning Kits", 52, 166);
-    ctx.fillText("2. Verified School Attendance Registers", 52, 194);
-    ctx.fillText("3. Direct Beneficiary Delivery Sign-off", 52, 222);
+    ctx.fillStyle = "#27231e";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("1. Field Materials & Procurement Units", 52, 166);
+    ctx.fillText("2. On-Site Community Installation Record", 52, 194);
+    ctx.fillText("3. Beneficiary Sign-Off & Photo Record", 52, 222);
 
-    ctx.fillStyle = "#f0fdf4";
+    ctx.fillStyle = "#f2f9f4";
     ctx.fillRect(52, 256, 310, 64);
-    ctx.strokeStyle = "#16a34a";
+    ctx.strokeStyle = "#24643b";
     ctx.strokeRect(52, 256, 310, 64);
 
-    ctx.fillStyle = "#15803d";
-    ctx.font = "bold 22px Inter, Arial, sans-serif";
-    ctx.fillText(`TOTAL PAID: $${Number(amount || 300).toFixed(2)}`, 68, 296);
+    ctx.fillStyle = "#1e4f30";
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText(`TRANCHE AMOUNT: $${Number(amount || 300).toFixed(2)}`, 68, 296);
 
-    ctx.fillStyle = "#64748b";
-    ctx.font = "12px Inter, Arial, sans-serif";
-    ctx.fillText("Paid via Verified NGO Disbursement Account", 52, 356);
+    ctx.fillStyle = "#827765";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("Verified Field Disbursement Claim", 52, 356);
 
     // Handwritten challenge placard held next to invoice
-    ctx.fillStyle = "#fef9c3";
+    ctx.fillStyle = "#fdf6f2";
     ctx.fillRect(404, 70, 206, 220);
-    ctx.strokeStyle = "#ca8a04";
+    ctx.strokeStyle = "#c85227";
     ctx.lineWidth = 3;
     ctx.strokeRect(404, 70, 206, 220);
 
-    ctx.fillStyle = "#713f12";
-    ctx.font = "bold 13px Inter, Arial, sans-serif";
-    ctx.fillText("LIVE FIELD CHALLENGE", 426, 108);
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = "#a63f1f";
+    ctx.font = "bold 13px sans-serif";
+    ctx.fillText("LIVE ONE-TIME CHALLENGE", 420, 108);
+    ctx.fillStyle = "#183e27";
     ctx.font = "bold 36px monospace";
     ctx.fillText(String(code || "000000"), 438, 168);
 
-    ctx.fillStyle = "#854d0e";
-    ctx.font = "12px Inter, Arial, sans-serif";
-    ctx.fillText("In-App Field Verification", 432, 212);
-    ctx.fillText(new Date().toISOString().slice(0, 10), 462, 236);
+    ctx.fillStyle = "#6e2e1c";
+    ctx.font = "11px sans-serif";
+    ctx.fillText("Field Placard Evidence Frame", 432, 212);
+    ctx.fillText(new Date().toISOString().slice(0, 10), 458, 236);
 
     canvas.toBlob((blob) => resolve(blob), "image/png");
   });
@@ -115,7 +117,7 @@ export default function NgoWorkspace({
   const [captureMode, setCaptureMode] = useState("upload");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [notes, setNotes] = useState(
-    "Delivered textbooks and verified school fee receipts with school principal on-site."
+    "Field installation verified on-site with local representative."
   );
   const [gps, setGps] = useState({ lat: 18.5204, lon: 73.8567 });
   const [submitting, setSubmitting] = useState(false);
@@ -170,7 +172,7 @@ export default function NgoWorkspace({
       setCameraActive(true);
     } catch (err) {
       notify(
-        `Camera access unavailable (${err.message}). Use file upload or sample receipt generator.`,
+        `Camera unavailable (${err.message}). Use upload or sample evidence generator.`,
         "error"
       );
     }
@@ -197,7 +199,7 @@ export default function NgoWorkspace({
           type: "image/png",
         });
         setSelectedFiles((prev) => [...prev, file]);
-        notify("Captured live camera frame for verification.");
+        notify("Captured live camera photo frame.");
       }
     }, "image/png");
   }
@@ -212,12 +214,12 @@ export default function NgoWorkspace({
       });
       setChallenge(ch);
       notify(
-        `Issued 1-time field verification code ${ch.code} for Milestone #${activeMilestone.id}.`
+        `Generated single-use code ${ch.code} for Milestone #${activeMilestone.id}.`
       );
       await onRefresh();
       return ch;
     } catch (err) {
-      notify(`Could not issue challenge code: ${err.message}`, "error");
+      notify(`Could not generate code: ${err.message}`, "error");
       return null;
     }
   }
@@ -241,13 +243,13 @@ export default function NgoWorkspace({
     );
     setSelectedFiles([file]);
     notify(
-      `Prepared sample field invoice & placard photo with code ${activeCode} ($${activeMilestone.tranche_amount}).`
+      `Prepared field manifest photo with challenge placard ${activeCode} ($${activeMilestone.tranche_amount}).`
     );
   }
 
   function handleDetectGps() {
     if (!navigator.geolocation) {
-      notify("Browser geolocation not supported; using Pune field coordinates.");
+      notify("Geolocation unavailable; maintaining field coordinates.");
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -256,10 +258,10 @@ export default function NgoWorkspace({
           lat: Number(pos.coords.latitude.toFixed(5)),
           lon: Number(pos.coords.longitude.toFixed(5)),
         });
-        notify("Updated GPS coordinates from device location.");
+        notify("GPS updated from device sensor.");
       },
       () => {
-        notify("Using default field site coordinates (18.5204, 73.8567).");
+        notify("Using registered field site GPS.");
       }
     );
   }
@@ -268,10 +270,7 @@ export default function NgoWorkspace({
     e.preventDefault();
     if (!activeMilestone) return;
     if (selectedFiles.length === 0) {
-      notify(
-        "Please upload a photo/receipt or click 'Attach Sample Field Receipt' first.",
-        "error"
-      );
+      notify("Please capture or upload an evidence photo first.", "error");
       return;
     }
     setSubmitting(true);
@@ -281,7 +280,7 @@ export default function NgoWorkspace({
         activeChallenge = await handleIssueChallenge();
       }
       if (!activeChallenge?.challenge_id) {
-        throw new Error("Could not obtain a valid challenge code.");
+        throw new Error("Missing active challenge code.");
       }
 
       const fd = new FormData();
@@ -295,38 +294,27 @@ export default function NgoWorkspace({
       fd.append(
         "device",
         JSON.stringify({
-          device_id: "ngo-field-tablet-pune-01",
+          device_id: "ngo-field-tablet-01",
           notes,
         })
       );
       selectedFiles.forEach((f) => fd.append("files", f, f.name));
 
-      notify(
-        "Uploading field evidence and running SHA-256 + dHash duplicate checks..."
-      );
+      notify("Analyzing evidence with SHA-256 and perceptual difference hashes...");
       const sub = await api(`/milestones/${activeMilestone.id}/submissions`, {
         method: "POST",
         body: fd,
       });
 
-      notify(
-        "Inspecting evidence with Gemini Multimodal Verifier & Skeptic Agents..."
-      );
       const analysis = await api(`/submissions/${sub.submission_id}/analyze`, {
         method: "POST",
       });
       setAnalysisResult(analysis);
-      setChallenge(null); // Challenge is one-time use
+      setChallenge(null);
       await onRefresh();
-      notify(
-        `Gemini verification complete: confidence ${(
-          (analysis.verifier?.confidence || 0) * 100
-        ).toFixed(0)}%, fraud risk ${(
-          (analysis.skeptic?.fraud_risk || 0) * 100
-        ).toFixed(0)}%.`
-      );
+      notify("Evidence processed and cross-verified.");
     } catch (err) {
-      notify(`Evidence submission failed: ${err.message}`, "error");
+      notify(`Submission failed: ${err.message}`, "error");
     } finally {
       setSubmitting(false);
     }
@@ -342,7 +330,7 @@ export default function NgoWorkspace({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             kind: "vendor",
-            contact_ref: "Deccan School Book Depot (+91-98201-11001)",
+            contact_ref: "Primary Field Supplier (+91-98201-11001)",
           }),
         }
       );
@@ -353,19 +341,19 @@ export default function NgoWorkspace({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             kind: "beneficiary",
-            contact_ref: "Principal Kavita Kulkarni (+91-98201-22002)",
+            contact_ref: "Local Committee Representative (+91-98201-22002)",
           }),
         }
       );
       const created = [
         {
           ...vInvite,
-          contact_ref: "Deccan School Book Depot (+91-98201-11001)",
+          contact_ref: "Primary Field Supplier",
           tranche_amount: activeMilestone.tranche_amount,
         },
         {
           ...bInvite,
-          contact_ref: "Principal Kavita Kulkarni (+91-98201-22002)",
+          contact_ref: "Local Committee Representative",
           tranche_amount: activeMilestone.tranche_amount,
         },
       ];
@@ -375,18 +363,16 @@ export default function NgoWorkspace({
       }
       await loadConfirmations(activeMilestone.id);
       await onRefresh();
-      notify(
-        "Issued independent confirmation links to Vendor and School Principal. Switch to 'External Verifier' role to sign off."
-      );
+      notify("Issued independent verification tokens to Supplier and Beneficiary.");
     } catch (err) {
-      notify(`Could not issue confirmation invites: ${err.message}`, "error");
+      notify(`Invite generation error: ${err.message}`, "error");
     }
   }
 
   async function handleEvaluateAndPayout() {
     if (!activeMilestone) return;
     try {
-      notify("Evaluating 6-rule compliance check & Gemini Release Agent...");
+      notify("Evaluating release rules...");
       const res = await api(`/milestones/${activeMilestone.id}/decision`, {
         method: "POST",
       });
@@ -402,32 +388,24 @@ export default function NgoWorkspace({
         });
         await onRefresh();
         notify(
-          `Milestone #${activeMilestone.id} approved! PayPal Payout of ${formatCurrency(
+          `Milestone #${activeMilestone.id} released: ${formatCurrency(
             activeMilestone.tranche_amount
-          )} disbursed.`
+          )} transferred!`
         );
       } else {
         await onRefresh();
-        notify(
-          `Release held (${String(res.decision).toUpperCase()}): ${
-            res.explanation
-          }`,
-          "error"
-        );
+        notify(`Release status: ${res.explanation}`);
       }
     } catch (err) {
-      notify(`Release evaluation error: ${err.message}`, "error");
+      notify(`Evaluation notice: ${err.message}`, "error");
     }
   }
 
   if (!activeMilestone) {
     return (
-      <div className="bg-white border border-slate-200 rounded-xl p-10 text-center">
-        <p className="text-slate-700 font-semibold">
-          No assigned grant milestones found.
-        </p>
-        <p className="text-sm text-slate-500 mt-1">
-          Click <strong>Load Sample Portfolio</strong> in the top bar or create a grant in the Donor Portal first.
+      <div className="bg-white border border-warmgray-200 rounded-2xl p-10 text-center">
+        <p className="text-warmgray-800 font-semibold">
+          No deliverables assigned yet.
         </p>
       </div>
     );
@@ -437,13 +415,56 @@ export default function NgoWorkspace({
 
   return (
     <div className="space-y-6">
-      {/* Top milestone selector bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Top Banner with Forest / Earth Tones */}
+      <div className="bg-gradient-to-r from-forest-900 via-forest-800 to-warmgray-900 text-white rounded-2xl p-6 shadow-sm border border-forest-700/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
-            Active Field Deliverable
+          <div className="flex items-center gap-2 text-forest-300 text-xs font-bold uppercase tracking-wider">
+            <Compass className="w-4 h-4 text-forest-400" />
+            <span>Field Operations &amp; Verification</span>
+          </div>
+          <h1 className="text-xl font-bold font-serif">
+            Deliverable Proof &amp; Payout Release
+          </h1>
+          <p className="text-xs text-warmgray-300">
+            Generate one-time placard codes, upload delivery proof, and request milestone tranches.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleIssueChallenge}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-warmgray-950 transition cursor-pointer shadow-sm"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            {challenge ? `Placard: ${challenge.code}` : "Generate Live Placard Code"}
+          </button>
+          <button
+            type="button"
+            onClick={handleInviteConfirmers}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-forest-950/70 hover:bg-forest-950 text-forest-200 border border-forest-600 transition cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            Invite Confirmers
+          </button>
+          <button
+            type="button"
+            onClick={handleEvaluateAndPayout}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-terracotta-600 hover:bg-terracotta-500 text-white transition cursor-pointer shadow-sm"
+          >
+            <Banknote className="w-3.5 h-3.5" />
+            Request Tranche Release
+          </button>
+        </div>
+      </div>
+
+      {/* Milestone selector */}
+      <div className="bg-white border border-warmgray-200 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-forest-700">
+            Current Deliverable
           </span>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3">
             <select
               value={activeMilestone.id}
               onChange={(e) => {
@@ -452,7 +473,7 @@ export default function NgoWorkspace({
                 setAnalysisResult(null);
                 setDecisionResult(null);
               }}
-              className="text-base font-bold text-slate-900 border border-slate-300 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-teal-600"
+              className="text-base font-bold text-warmgray-900 border border-warmgray-300 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-forest-600"
             >
               {allMilestones.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -469,41 +490,18 @@ export default function NgoWorkspace({
               {activeMilestone.status}
             </span>
           </div>
-          <p className="text-xs text-slate-500">
-            {activeMilestone.description || activeMilestone.projectIntent}
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={handleIssueChallenge}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 transition shadow-sm"
-          >
-            <KeyRound className="w-4 h-4" />
-            {challenge
-              ? `Active Code: ${challenge.code}`
-              : "1. Generate Live Challenge Code"}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleInviteConfirmers}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
-          >
-            <UserPlus className="w-4 h-4 text-teal-700" />
-            3. Invite Third-Party Confirmers
-          </button>
-
-          <button
-            type="button"
-            onClick={handleEvaluateAndPayout}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-teal-700 hover:bg-teal-800 text-white transition shadow-sm"
-          >
-            <Banknote className="w-4 h-4" />
-            4. Verify Compliance &amp; Release Payout
-          </button>
-        </div>
+        {challenge && (
+          <div className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-300 text-right">
+            <span className="block text-[10px] font-bold uppercase text-amber-900">
+              Hold in Photo Frame
+            </span>
+            <span className="font-mono text-xl font-extrabold text-warmgray-900 tracking-widest">
+              {challenge.code}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Main 2-column grid */}
@@ -511,108 +509,95 @@ export default function NgoWorkspace({
         {/* Left 7 cols: Evidence Capture & Upload */}
         <form
           onSubmit={handleSubmitAndAnalyze}
-          className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6 space-y-5"
+          className="lg:col-span-7 bg-white border border-warmgray-200 rounded-2xl p-6 space-y-5"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center justify-between border-b border-warmgray-100 pb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
-                Field Evidence &amp; Receipt Submission
+              <h3 className="text-base font-bold text-warmgray-900 font-serif">
+                Field Evidence Submission
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Include the 6-digit challenge code in your photo alongside the vendor invoice or field delivery.
+              <p className="text-xs text-warmgray-500 mt-0.5">
+                Capture the one-time code alongside delivery goods or vendor tax invoice.
               </p>
             </div>
-            {challenge && (
-              <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-right">
-                <span className="block text-[10px] font-bold uppercase text-amber-800">
-                  Write on Placard
-                </span>
-                <span className="font-mono text-lg font-extrabold text-slate-900 tracking-widest">
-                  {challenge.code}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex rounded-lg p-1 bg-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  stopCamera();
-                  setCaptureMode("upload");
-                }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
-                  captureMode === "upload"
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-600"
-                }`}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Upload Receipt / Photo
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCaptureMode("camera");
-                  startCamera();
-                }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
-                  captureMode === "camera"
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-600"
-                }`}
-              >
-                <Camera className="w-3.5 h-3.5" />
-                Live WebRTC Camera
-              </button>
-            </div>
-
             <button
               type="button"
               onClick={handleAttachSampleReceipt}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 transition"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-forest-50 text-forest-800 border border-forest-200 hover:bg-forest-100 transition cursor-pointer"
             >
               <FileCheck2 className="w-3.5 h-3.5" />
-              Attach Sample Field Receipt (${activeMilestone.tranche_amount})
+              Attach Sample Field Photo (${activeMilestone.tranche_amount})
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                stopCamera();
+                setCaptureMode("upload");
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition ${
+                captureMode === "upload"
+                  ? "bg-warmgray-900 text-white"
+                  : "bg-warmgray-100 text-warmgray-700"
+              }`}
+            >
+              <Upload className="w-3.5 h-3.5 inline mr-1" />
+              File Upload
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCaptureMode("camera");
+                startCamera();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition ${
+                captureMode === "camera"
+                  ? "bg-warmgray-900 text-white"
+                  : "bg-warmgray-100 text-warmgray-700"
+              }`}
+            >
+              <Camera className="w-3.5 h-3.5 inline mr-1" />
+              Live In-App Camera
             </button>
           </div>
 
           {captureMode === "camera" ? (
-            <div className="space-y-3 bg-slate-950 rounded-xl p-4 text-center">
+            <div className="space-y-3 bg-warmgray-950 rounded-2xl p-4 text-center">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full max-h-64 object-cover rounded-lg bg-slate-900 mx-auto"
+                className="w-full max-h-64 object-cover rounded-xl bg-warmgray-900 mx-auto"
               />
               <div className="flex justify-center gap-3">
                 <button
                   type="button"
                   onClick={captureCameraFrame}
                   disabled={!cameraActive}
-                  className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-forest-600 hover:bg-forest-500 text-white text-xs font-bold cursor-pointer"
                 >
-                  Capture Photo Frame
+                  Capture Frame
                 </button>
                 <button
                   type="button"
                   onClick={stopCamera}
-                  className="px-3 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold"
+                  className="px-3 py-2 rounded-xl bg-warmgray-800 text-warmgray-200 text-xs font-semibold cursor-pointer"
                 >
                   Stop Camera
                 </button>
               </div>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-teal-600 rounded-xl p-6 cursor-pointer bg-slate-50/50 transition">
-              <Upload className="w-7 h-7 text-slate-400 mb-2" />
-              <span className="text-sm font-semibold text-slate-700">
-                Select field photos, invoices, or attendance sheets
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-warmgray-300 hover:border-forest-600 rounded-2xl p-6 cursor-pointer bg-warmgray-50/50 transition">
+              <Upload className="w-7 h-7 text-warmgray-400 mb-2" />
+              <span className="text-sm font-semibold text-warmgray-800">
+                Select field delivery photos or invoices
               </span>
-              <span className="text-xs text-slate-500 mt-0.5">
-                PNG, JPG, WebP, or PDF • Checked via SHA-256 &amp; 64-bit perceptual dHash
+              <span className="text-xs text-warmgray-500 mt-0.5">
+                PNG, JPG, or PDF • Cross-referenced via perceptual hashing
               </span>
               <input
                 type="file"
@@ -627,15 +612,14 @@ export default function NgoWorkspace({
           )}
 
           {selectedFiles.length > 0 && (
-            <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-3 flex items-center justify-between text-xs text-emerald-900">
-              <div className="font-medium">
-                Ready to submit:{" "}
-                <strong>{selectedFiles.map((f) => f.name).join(", ")}</strong>
-              </div>
+            <div className="bg-forest-50 border border-forest-200 rounded-xl p-3 flex items-center justify-between text-xs text-forest-950">
+              <span className="truncate">
+                Ready to submit: <strong>{selectedFiles.map((f) => f.name).join(", ")}</strong>
+              </span>
               <button
                 type="button"
                 onClick={() => setSelectedFiles([])}
-                className="text-emerald-700 underline font-semibold"
+                className="text-forest-800 underline font-bold cursor-pointer shrink-0 ml-2"
               >
                 Clear
               </button>
@@ -644,7 +628,7 @@ export default function NgoWorkspace({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-warmgray-700 mb-1">
                 Field Officer Delivery Notes
               </label>
               <input
@@ -652,19 +636,19 @@ export default function NgoWorkspace({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
+                className="w-full rounded-xl border border-warmgray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-forest-600"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                GPS Geotag
+              <label className="block text-xs font-semibold text-warmgray-700 mb-1">
+                Field Site Geotag
               </label>
               <button
                 type="button"
                 onClick={handleDetectGps}
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-warmgray-300 px-3 py-2 text-xs font-semibold text-warmgray-700 hover:bg-warmgray-50 cursor-pointer"
               >
-                <MapPin className="w-3.5 h-3.5 text-teal-700" />
+                <MapPin className="w-3.5 h-3.5 text-forest-700" />
                 {gps.lat}, {gps.lon}
               </button>
             </div>
@@ -673,170 +657,92 @@ export default function NgoWorkspace({
           <button
             type="submit"
             disabled={submitting}
-            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm shadow-sm disabled:opacity-50 transition"
+            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-forest-700 hover:bg-forest-600 text-white font-bold text-sm shadow-sm disabled:opacity-50 transition cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
-            {submitting
-              ? "Uploading & Running Gemini Multimodal Inspection..."
-              : "2. Submit Evidence & Run Gemini Anti-Fraud Verification"}
+            {submitting ? "Analyzing Field Proof..." : "Submit Evidence & Run Verification"}
           </button>
         </form>
 
-        {/* Right 5 cols: Verification Results, Confirmations & Release Status */}
+        {/* Right 5 cols: Verification Results & Confirmations */}
         <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-teal-700" />
-                Gemini Verifier &amp; Skeptic Assessment
-              </h3>
-              {analysisResult && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-800">
-                  {analysisResult.verifier?.source || "gemini"}
-                </span>
-              )}
-            </div>
+          {/* AI Inspection Card */}
+          <div className="bg-white border border-warmgray-200 rounded-2xl p-5 space-y-3">
+            <h3 className="text-sm font-bold text-warmgray-900 font-serif flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-forest-700" />
+              Automated Forensic Verification
+            </h3>
 
             {!analysisResult ? (
-              <p className="text-xs text-slate-500 py-6 text-center">
-                Submit field evidence on the left to run multimodal challenge-code OCR, invoice total matching, and duplicate tamper analysis.
+              <p className="text-xs text-warmgray-500 py-6 text-center">
+                Submit evidence to trigger OCR challenge-code inspection and duplicate perceptual difference analysis.
               </p>
             ) : (
               <div className="space-y-3 text-xs">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 block">
-                      Verifier Confidence
+                  <div className="p-3 rounded-xl bg-warmgray-50 border border-warmgray-200">
+                    <span className="text-warmgray-500 block">Confidence</span>
+                    <span className="text-lg font-bold text-forest-700">
+                      {((analysisResult.verifier?.confidence || 0) * 100).toFixed(0)}%
                     </span>
-                    <span className="text-lg font-extrabold text-emerald-700">
-                      {(
-                        (analysisResult.verifier?.confidence || 0) * 100
-                      ).toFixed(0)}
-                      %
-                    </span>
-                    <span className="block text-[11px] text-slate-600 mt-0.5">
-                      Code Visible:{" "}
-                      <strong>
-                        {analysisResult.verifier?.challenge_code_visible
-                          ? "Yes"
-                          : "No"}
-                      </strong>{" "}
-                      | Amount:{" "}
-                      <strong>
-                        {formatCurrency(
-                          analysisResult.verifier?.extracted_amount
-                        )}
-                      </strong>
+                    <span className="block text-[11px] text-warmgray-600 mt-0.5">
+                      Code: {analysisResult.verifier?.challenge_code_visible ? "Visible" : "Missing"}
                     </span>
                   </div>
-                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 block">
-                      Skeptic Fraud Risk
+                  <div className="p-3 rounded-xl bg-warmgray-50 border border-warmgray-200">
+                    <span className="text-warmgray-500 block">Fraud Risk</span>
+                    <span className="text-lg font-bold text-warmgray-900">
+                      {((analysisResult.skeptic?.fraud_risk || 0) * 100).toFixed(0)}%
                     </span>
-                    <span
-                      className={`text-lg font-extrabold ${
-                        (analysisResult.skeptic?.fraud_risk || 0) <= 0.35
-                          ? "text-emerald-700"
-                          : "text-rose-700"
-                      }`}
-                    >
-                      {((analysisResult.skeptic?.fraud_risk || 0) * 100).toFixed(
-                        0
-                      )}
-                      %
-                    </span>
-                    <span className="block text-[11px] text-slate-600 mt-0.5">
-                      Recommendation:{" "}
-                      <strong className="uppercase">
-                        {analysisResult.skeptic?.recommendation}
-                      </strong>
+                    <span className="block text-[11px] text-warmgray-600 mt-0.5 uppercase">
+                      {analysisResult.skeptic?.recommendation || "PASS"}
                     </span>
                   </div>
                 </div>
-
-                {analysisResult.skeptic?.concerns?.length > 0 && (
-                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-900">
-                    <span className="font-bold block mb-1">
-                      Triggered Risk Concerns:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {analysisResult.skeptic.concerns.map((c, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-mono text-[11px]"
-                        >
-                          {c.code}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <p className="text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <p className="text-warmgray-700 bg-warmgray-50 p-3 rounded-xl border border-warmgray-200 leading-relaxed">
                   {analysisResult.verifier?.explanation}
                 </p>
               </div>
             )}
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+          {/* Third-Party Confirmation Status */}
+          <div className="bg-white border border-warmgray-200 rounded-2xl p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-bold text-warmgray-900 font-serif">
                 Independent Third-Party Sign-Offs
               </h3>
               <span
                 className={`px-2 py-0.5 rounded text-xs font-semibold ${
                   matchedCount >= 1
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-amber-50 text-amber-800"
+                    ? "bg-forest-100 text-forest-800"
+                    : "bg-amber-100 text-amber-900"
                 }`}
               >
-                {matchedCount} Verified Sign-Off(s)
+                {matchedCount} Confirmed
               </span>
             </div>
-            <p className="text-xs text-slate-500">
-              Payouts require independent confirmation from the supplying Vendor or Beneficiary representative.
+            <p className="text-xs text-warmgray-500">
+              Tranches require independent verification from the supplying vendor or beneficiary.
             </p>
             {invites.length > 0 && (
               <div className="space-y-1.5 pt-1">
                 {invites.map((inv) => (
                   <div
                     key={inv.token}
-                    className="flex items-center justify-between text-xs bg-slate-50 px-3 py-2 rounded-lg border border-slate-200"
+                    className="flex items-center justify-between text-xs bg-warmgray-50 px-3 py-2 rounded-xl border border-warmgray-200"
                   >
-                    <span className="font-semibold capitalize text-slate-800">
-                      {inv.kind}: {inv.contact_ref}
+                    <span className="font-semibold text-warmgray-800">
+                      {inv.contact_ref}
                     </span>
-                    <code className="text-[11px] bg-white px-2 py-0.5 rounded border border-slate-200 text-teal-800">
-                      {inv.token.slice(0, 12)}…
+                    <code className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-warmgray-200 text-terracotta-800">
+                      {inv.token.slice(0, 10)}…
                     </code>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
-          {decisionResult && (
-            <div
-              className={`border rounded-xl p-5 space-y-2 ${
-                decisionResult.decision === "approve"
-                  ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
-                  : "bg-amber-50/70 border-amber-200 text-amber-950"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  Release Gate Decision
-                </span>
-                <span className="px-2.5 py-0.5 rounded-md text-xs font-bold uppercase bg-white/80">
-                  {decisionResult.decision}
-                </span>
-              </div>
-              <p className="text-xs leading-relaxed">
-                {decisionResult.explanation}
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>
