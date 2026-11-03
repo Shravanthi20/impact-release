@@ -1,7 +1,42 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
+export function getAuthToken() {
+  return localStorage.getItem("impactrelease_token") || "";
+}
+
+export function setAuthToken(token) {
+  if (token) {
+    localStorage.setItem("impactrelease_token", token);
+  } else {
+    localStorage.removeItem("impactrelease_token");
+  }
+}
+
+export function getStoredUser() {
+  try {
+    const raw = localStorage.getItem("impactrelease_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user) {
+  if (user) {
+    localStorage.setItem("impactrelease_user", JSON.stringify(user));
+  } else {
+    localStorage.removeItem("impactrelease_user");
+  }
+}
+
 export async function api(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, options);
+  const headers = { ...(options.headers || {}) };
+  const token = getAuthToken();
+  if (token && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.detail || `Request failed (${res.status})`);

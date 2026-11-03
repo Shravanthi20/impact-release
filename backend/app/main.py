@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.db.session import init_db
-from app.routers import confirmations, contract, demo, eval as eval_router, evidence, payments
+from app.routers import auth, confirmations, contract, demo, eval as eval_router, evidence, payments
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 DIST_DIR = FRONTEND_DIR / "dist"
@@ -35,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(payments.router)
 app.include_router(contract.router)
 app.include_router(evidence.router)

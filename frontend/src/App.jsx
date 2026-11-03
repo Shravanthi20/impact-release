@@ -10,25 +10,29 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
+  LogIn,
+  LogOut,
+  User,
 } from "lucide-react";
-import { api, formatCurrency } from "./api.js";
+import { api, formatCurrency, getStoredUser, setAuthToken, setStoredUser } from "./api.js";
 import DonorWorkspace from "./components/DonorWorkspace.jsx";
 import NgoWorkspace from "./components/NgoWorkspace.jsx";
 import VerifierWorkspace from "./components/VerifierWorkspace.jsx";
 import AuditorWorkspace from "./components/AuditorWorkspace.jsx";
 import PublicWorkspace from "./components/PublicWorkspace.jsx";
+import AuthModal from "./components/AuthModal.jsx";
 
 const ROLES = [
   {
     id: "donor",
-    label: "Donor Portal",
+    label: "Sponsor Dashboard",
     persona: "Asha Foundation (Grantmaker)",
     badge: "Fund & Structure Grants",
     icon: Briefcase,
   },
   {
     id: "ngo",
-    label: "NGO Field Partner",
+    label: "NGO Dashboard",
     persona: "Vidya Grassroots Trust",
     badge: "Submit Proof & Request Payouts",
     icon: Camera,
@@ -42,7 +46,7 @@ const ROLES = [
   },
   {
     id: "auditor",
-    label: "Compliance Auditor",
+    label: "Admin & Compliance",
     persona: "Risk & Audit Operations",
     badge: "Review Escalations & Collusion",
     icon: Scale,
@@ -57,7 +61,15 @@ const ROLES = [
 ];
 
 export default function App() {
-  const [activeRole, setActiveRole] = useState("donor");
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [activeRole, setActiveRole] = useState(() => {
+    const u = getStoredUser();
+    if (u?.role === "ngo") return "ngo";
+    if (u?.role === "reviewer") return "auditor";
+    return "donor";
+  });
+
   const [health, setHealth] = useState(null);
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -66,7 +78,8 @@ export default function App() {
   const [riskGraph, setRiskGraph] = useState({
     nodes: [],
     edges: [],
-    suspicious_clusters: [],
+    alerts: [],
+    edge_count: 0,
   });
   const [audit, setAudit] = useState([]);
   const [activeInvites, setActiveInvites] = useState([]);
@@ -104,13 +117,31 @@ export default function App() {
     refreshAll();
   }, [refreshAll]);
 
+  // Sync active user role tab when user logs in
+  function handleLoginSuccess(user) {
+    setCurrentUser(user);
+    setShowAuthModal(false);
+    if (user.role === "ngo") setActiveRole("ngo");
+    else if (user.role === "reviewer") setActiveRole("auditor");
+    else setActiveRole("donor");
+    notify(`Signed in as ${user.name} (${user.role.toUpperCase()})`);
+    refreshAll();
+  }
+
+  function handleLogout() {
+    setAuthToken("");
+    setStoredUser(null);
+    setCurrentUser(null);
+    notify("Signed out of session");
+  }
+
   async function handleSeedPortfolio() {
     setSeeding(true);
     try {
       notify("Initializing sample grant portfolio and verified milestone records...");
       await api("/demo/seed", { method: "POST" });
       await refreshAll();
-      notify("Sample grant portfolio loaded across all role workspaces.");
+      notify("Sample grant portfolio loaded across all role dashboards.");
     } catch (err) {
       notify(`Failed to seed sample portfolio: ${err.message}`, "error");
     } finally {
@@ -141,7 +172,7 @@ export default function App() {
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-extrabold text-sm">
+            <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-extrabold text-sm shadow-inner">
               IR
             </div>
             <div>
@@ -150,16 +181,16 @@ export default function App() {
                   ImpactRelease
                 </span>
                 <span className="hidden sm:inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                  PayPal Orders &amp; Payouts + Gemini Multimodal Verification
+                  PayPal Escrow &amp; Payouts + Gemini Anti-Fraud AI
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden md:block">
-                Milestone-Based Grant Escrow, Anti-Fraud Field Verification &amp; Disbursement Platform
+                Enterprise Milestone Grant Escrow &amp; Autonomous Multimodal Payout Platform
               </p>
             </div>
           </div>
 
-          {/* Right controls: Role Switcher + Sample Portfolio Loader */}
+          {/* Right controls: User Profile / Auth Button + Demo Seeder */}
           <div className="flex items-center gap-2.5">
             <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-300 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
@@ -185,8 +216,39 @@ export default function App() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-500 text-white transition shadow-sm disabled:opacity-50"
             >
               <Database className="w-3.5 h-3.5" />
-              {seeding ? "Loading..." : "Load Sample Portfolio"}
+              {seeding ? "Loading..." : "Load Demo Data"}
             </button>
+
+            {/* Authentication Button / User Chip */}
+            {currentUser ? (
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-700">
+                <div className="text-right hidden sm:block">
+                  <div className="text-xs font-bold text-slate-200">
+                    {currentUser.name}
+                  </div>
+                  <div className="text-[10px] text-teal-400 uppercase font-semibold">
+                    {currentUser.role}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  title="Sign Out"
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-900 hover:bg-slate-100 transition shadow-sm"
+              >
+                <LogIn className="w-3.5 h-3.5 text-teal-700" />
+                Sign In / Register
+              </button>
+            )}
 
             <button
               type="button"
@@ -199,8 +261,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Role Navigation Bar */}
-        <div className="bg-slate-950/60 border-t border-slate-800/80">
+        {/* Role Navigation Bar (Tabs for Dashboards) */}
+        <div className="bg-slate-950/70 border-t border-slate-800/80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between overflow-x-auto py-2 gap-2">
             <div className="flex items-center gap-1.5">
               {ROLES.map((r) => {
@@ -213,7 +275,7 @@ export default function App() {
                     onClick={() => setActiveRole(r.id)}
                     className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
                       active
-                        ? "bg-teal-600 text-white shadow-sm"
+                        ? "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400/30"
                         : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
                     }`}
                   >
@@ -230,7 +292,7 @@ export default function App() {
             </div>
 
             <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 shrink-0">
-              <span>Signed in as:</span>
+              <span>Viewing Context:</span>
               <strong className="text-slate-200 font-semibold">
                 {currentRoleMeta.persona}
               </strong>
@@ -244,7 +306,7 @@ export default function App() {
         {/* Toast notification */}
         {toast && (
           <div
-            className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-xs font-medium shadow-sm ${
+            className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-xs font-medium shadow-sm animate-fade-in ${
               toast.type === "error"
                 ? "bg-rose-50 border-rose-200 text-rose-900"
                 : "bg-teal-50/90 border-teal-200 text-teal-950"
@@ -308,7 +370,7 @@ export default function App() {
 
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
             <span className="text-xs font-semibold text-slate-500">
-              Compliance Review Queue
+              Admin Compliance Queue
             </span>
             <div
               className={`text-2xl font-extrabold mt-1 ${
@@ -323,7 +385,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Active Role Workspace */}
+        {/* Active Role Dashboard */}
         {activeRole === "donor" && (
           <DonorWorkspace
             projects={projects}
@@ -370,6 +432,14 @@ export default function App() {
           <PublicWorkspace ledger={ledger} audit={audit} />
         )}
       </main>
+
+      {/* Sign-in / Sign-up Modal */}
+      {showAuthModal && (
+        <AuthModal
+          onLoginSuccess={handleLoginSuccess}
+          onClose={() => setShowAuthModal(false)}
+        />
+      )}
     </div>
   );
 }
