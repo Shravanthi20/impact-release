@@ -4,7 +4,7 @@ Programmable generosity: donors state an intent, AI agents turn it into verifiab
 check evidence from several independent angles, and release funds in tranches through
 **PayPal Payouts**, with an explained, public ledger.
 
-> Status: **Phase 2 complete** (PayPal funding/payout/webhooks/ledger, contract agent via free Gemini tier or offline fallback).
+> Status: **Phase 3 complete** (PayPal funding/payout/webhooks/ledger, contract agent via free Gemini tier or offline fallback).
 > Fraud is made costlier and more likely to be caught. It is not eliminated.
 
 ## Run it locally
@@ -40,14 +40,21 @@ Run tests: `..\.venv\Scripts\python -m pytest -q`
 Guardrail: [`release_service.release_milestone`](backend/app/services/release_service.py) is the
 only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` need human approval.
 
+## Phase 3: evidence capture
+- `POST /milestones/{id}/challenge`: one-time 6-digit code, expires after 30 min.
+- `POST /milestones/{id}/submissions` (multipart): challenge, capture time, location, device, files.
+- Server enforces: single-use code, capture time inside the window, allowed file types, size limit, SHA-256 hashing, content-addressed storage.
+- Flags (stored, not blocked): byte-identical file reused anywhere, capture not reported as in-app.
+- **Limit:** the server cannot prove a photo came from the in-app camera or that GPS is real. Those fields are claims for later cross-checks. Whether the code appears in the image is checked by the verifier agent in Phase 4.
+
 ## Roadmap
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Repo, license, config, stub PayPal | Done |
 | 1 | PayPal core: fund, payout, webhooks, ledger | Done |
 | 2 | Contract agent: intent to milestones | Done |
-| 3 | In-app capture, challenge codes, evidence hashing | Next |
-| 4 | Verifier + skeptic agents, Elastic duplicate search | |
+| 3 | In-app capture, challenge codes, evidence hashing | Done |
+| 4 | Verifier + skeptic agents, Elastic duplicate search | Next |
 | 5 | Confirmations, rules engine, challenge window, holdback | |
 | 6 | Reviewer console and public ledger UI (AG Grid) | |
 | 7 | Red-team eval and hardening | |

@@ -122,7 +122,7 @@ def approve_milestone(milestone_id: int, body: ApproveIn, session: Session = Dep
     milestone = session.get(Milestone, milestone_id)
     if not milestone:
         raise HTTPException(404, "milestone not found")
-    if milestone.status != "PENDING":
+    if milestone.status not in ("PENDING", "EVIDENCE_SUBMITTED"):
         raise HTTPException(409, f"milestone is {milestone.status}")
     milestone.status = "APPROVED_FOR_RELEASE"
     session.add(milestone)

@@ -75,3 +75,40 @@ class AuditLog(SQLModel, table=True):
     entity_id: Optional[int] = None
     details_json: str = "{}"
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class Challenge(SQLModel, table=True):
+    """One-time code the field team must show in the frame (defeats reuse of old photos)."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    milestone_id: int = Field(foreign_key="milestone.id")
+    issued_to: int = Field(foreign_key="user.id")
+    code: str
+    issued_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime
+    used: bool = False
+
+
+class Submission(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    milestone_id: int = Field(foreign_key="milestone.id")
+    challenge_id: int = Field(foreign_key="challenge.id")
+    submitted_by: int = Field(foreign_key="user.id")
+    captured_at: datetime  # client-reported (untrusted)
+    received_at: datetime = Field(default_factory=utcnow)  # server time (trusted)
+    capture_source: str = "unknown"  # claimed by client: in_app_camera | upload | unknown
+    geo_json: str = "{}"
+    device_json: str = "{}"
+    # SUBMITTED (clean) | FLAGGED (needs review)
+    status: str = "SUBMITTED"
+    flags_json: str = "[]"
+
+
+class EvidenceItem(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    submission_id: int = Field(foreign_key="submission.id")
+    kind: str  # photo | video | document
+    filename: str
+    content_type: str
+    size_bytes: int
+    sha256: str = Field(index=True)
+    stored_path: str

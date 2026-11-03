@@ -30,5 +30,11 @@ class Settings(BaseSettings):
     # Release guardrails (Phase 5 will enforce more of these).
     human_approval_threshold: float = 500.0
 
+    # Evidence capture (Phase 3)
+    challenge_ttl_minutes: int = 30
+    clock_skew_seconds: int = 120
+    max_upload_mb: int = 10
+    evidence_dir: str = str(ENV_FILE.parent / "data" / "evidence")
+
 
 settings = Settings()

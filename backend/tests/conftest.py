@@ -1,4 +1,7 @@
 import os
+import tempfile
+
+os.environ["EVIDENCE_DIR"] = tempfile.mkdtemp(prefix="ir_evidence_")
 
 os.environ["DATABASE_URL"] = "sqlite://"  # in-memory
 os.environ["PAYPAL_MODE"] = "stub"
