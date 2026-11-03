@@ -210,6 +210,171 @@ def public_ledger(session: Session = Depends(get_session)):
     return out
 
 
+def _humanize_audit(
+    row: AuditLog,
+    users: dict[int, User],
+    projects: dict[int, Project],
+    milestones: dict[int, Milestone],
+) -> dict:
+    details = {}
+    try:
+        details = json.loads(row.details_json or "{}")
+    except ValueError:
+        pass
+
+    # Resolve human-friendly actor name
+    actor = row.actor
+    if actor.startswith("user:"):
+        uid = int(actor.split(":", 1)[1]) if actor.split(":", 1)[1].isdigit() else -1
+        u = users.get(uid)
+        actor_label = f"{u.name} ({u.role.upper()})" if u else f"User #{uid}"
+    elif actor in ("donor", "ngo", "reviewer"):
+        actor_label = actor.capitalize()
+    elif actor.startswith("release_agent"):
+        actor_label = "Release Decision Agent"
+    elif actor == "paypal":
+        actor_label = "PayPal Webhook"
+    elif actor == "system":
+        actor_label = "ImpactRelease System"
+    elif ":" in actor:
+        kind, ref = actor.split(":", 1)
+        actor_label = f"{ref} ({kind.capitalize()})"
+    else:
+        actor_label = actor
+
+    # Resolve human-friendly target entity name
+    if row.entity == "project" and row.entity_id in projects:
+        p = projects[row.entity_id]
+        entity_label = f"Grant #{p.id} (${p.total_amount:,.2f})"
+    elif row.entity == "milestone" and row.entity_id in milestones:
+        m = milestones[row.entity_id]
+        entity_label = f"Milestone #{m.order_no}: {m.title}"
+    elif row.entity_id is not None:
+        entity_label = f"{row.entity.capitalize()} #{row.entity_id}"
+    else:
+        entity_label = row.entity.capitalize()
+
+    action = row.action
+    category = "System"
+    severity = "info"
+    event_title = action.replace("_", " ").title()
+    summary = ""
+
+    if action == "project_created":
+        category = "Grant Setup"
+        event_title = "Grant Contract Created"
+        summary = f"Created milestone-based grant contract for {entity_label}."
+    elif action == "funding_order_created":
+        category = "PayPal Funding"
+        event_title = "PayPal Order Initiated"
+        summary = f"Created PayPal funding order ({details.get('order_id', 'N/A')})."
+    elif action == "funding_captured":
+        category = "PayPal Funding"
+        severity = "ok"
+        event_title = "Grant Funds Captured"
+        summary = f"PayPal payment captured into grant balance (Ref: {details.get('capture_id', 'N/A')})."
+    elif action == "challenge_issued":
+        category = "Field Evidence"
+        event_title = "Verification Code Issued"
+        summary = f"Generated a single-use 6-digit camera verification code for {entity_label}."
+    elif action == "evidence_submitted":
+        category = "Field Evidence"
+        flags = details.get("flags") or []
+        severity = "warn" if flags else "ok"
+        event_title = "Field Evidence Uploaded"
+        flag_txt = f" — Flagged: {', '.join(flags)}" if flags else " — Passed capture checks"
+        summary = f"Uploaded {details.get('files', 1)} evidence file(s) (Submission #{details.get('submission_id')}){flag_txt}."
+    elif action == "submission_analyzed":
+        category = "AI Verification"
+        rec = str(details.get("skeptic_recommendation", "")).upper()
+        risk = int(round(float(details.get("skeptic_risk", 0)) * 100))
+        conf = int(round(float(details.get("verifier_confidence", 0)) * 100))
+        code_ok = "visible" if details.get("challenge_code_visible") else "missing"
+        severity = "ok" if rec == "PASS" else ("err" if rec == "HOLD" else "warn")
+        event_title = "AI Verifier & Skeptic Inspection"
+        summary = (
+            f"Verifier confidence {conf}% (challenge code {code_ok}); "
+            f"Skeptic fraud risk {risk}% ({rec}) → Status: {details.get('milestone_status')}."
+        )
+    elif action == "confirmation_invited":
+        category = "Third-Party Proof"
+        event_title = "Verification Link Sent"
+        summary = f"Invited {details.get('kind', 'verifier')} '{details.get('contact_ref', '')}' to independently confirm delivery."
+    elif action == "confirmation_submitted":
+        category = "Third-Party Proof"
+        matched = details.get("matched", False)
+        flags = details.get("flags") or []
+        severity = "ok" if matched else "err"
+        event_title = "Third-Party Confirmation Received"
+        summary = (
+            "Independent confirmer verified delivery matching milestone terms."
+            if matched
+            else f"Confirmation flagged ({', '.join(flags) or 'Denied'}) — Routed to Compliance Review."
+        )
+    elif action == "release_evaluated":
+        category = "Release Engine"
+        passed = details.get("rules_passed", False)
+        severity = "ok" if passed else "warn"
+        event_title = "Release Rules Evaluated"
+        summary = (
+            f"Decision: {str(details.get('decision', '')).upper()} "
+            f"({'All 6 hard rules passed' if passed else 'Unmet verification criteria'}) "
+            f"→ {details.get('milestone_status')}."
+        )
+    elif action == "payout_created":
+        category = "PayPal Payout"
+        severity = "ok"
+        event_title = "PayPal Payout Disbursed"
+        summary = (
+            f"Disbursed ${float(details.get('amount', 0)):,.2f} via PayPal Payouts "
+            f"(Batch: {details.get('batch_id', 'N/A')})."
+        )
+    elif action.startswith("webhook:"):
+        category = "PayPal Webhook"
+        st = details.get("status", "")
+        severity = "ok" if st == "SUCCESS" else "err"
+        event_title = f"PayPal Event: {action.replace('webhook:', '')}"
+        summary = f"PayPal updated payout batch status to {st}."
+    elif action == "dispute_raised":
+        category = "Dispute"
+        severity = "err"
+        event_title = "Delivery Dispute Filed"
+        summary = f"Dispute filed on {entity_label}: \"{details.get('reason', '')}\""
+    elif action.startswith("human_review_"):
+        category = "Compliance Review"
+        approved = action.endswith("approve")
+        severity = "ok" if approved else "err"
+        event_title = "Auditor Review Decision"
+        summary = f"Auditor {'approved' if approved else 'rejected'} milestone: {details.get('comment', '')}"
+    elif action == "holdback_released":
+        category = "PayPal Payout"
+        severity = "ok"
+        event_title = "Retention Holdback Released"
+        summary = f"Released final ${float(details.get('amount', 0)):,.2f} retention holdback upon grant completion."
+    else:
+        summary = row.details_json
+
+    return {
+        "id": row.id,
+        "actor": row.actor,
+        "actor_label": actor_label,
+        "action": row.action,
+        "event_title": event_title,
+        "category": category,
+        "severity": severity,
+        "entity": row.entity,
+        "entity_id": row.entity_id,
+        "entity_label": entity_label,
+        "summary": summary,
+        "details_json": row.details_json,
+        "created_at": row.created_at,
+    }
+
+
 @router.get("/audit")
 def audit_log(session: Session = Depends(get_session)):
-    return session.exec(select(AuditLog).order_by(AuditLog.id.desc()).limit(200)).all()
+    rows = session.exec(select(AuditLog).order_by(AuditLog.id.desc()).limit(200)).all()
+    users = {u.id: u for u in session.exec(select(User)).all() if u.id is not None}
+    projects = {p.id: p for p in session.exec(select(Project)).all() if p.id is not None}
+    milestones = {m.id: m for m in session.exec(select(Milestone)).all() if m.id is not None}
+    return [_humanize_audit(r, users, projects, milestones) for r in rows]

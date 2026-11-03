@@ -1,0 +1,9 @@
+{
+  "name": "ImpactRelease — Milestone Grant & Payout Platform",
+  "short_name": "ImpactRelease",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0d9488",
+  "description": "Milestone-based grant verification and PayPal Payouts platform."
+}

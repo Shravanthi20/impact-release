@@ -10,11 +10,20 @@ check evidence from several independent angles, and release funds in tranches th
 ## Run it locally
 
 ```powershell
+# 1. Start the FastAPI backend (also serves the pre-built React production bundle at http://localhost:8000)
 cd backend
 python -m venv ..\.venv
 ..\.venv\Scripts\pip install -r requirements.txt
 copy ..\.env.example ..\.env        # PAYPAL_MODE=stub works with no credentials
 ..\.venv\Scripts\python -m uvicorn app.main:app --reload
+```
+
+For hot-reloading frontend development (React 18 + Vite + Tailwind CSS + AG Grid):
+```powershell
+cd frontend
+npm install
+npm run dev                         # Runs Vite dev server on http://localhost:5173 (proxied to :8000)
+npm run build                       # Builds production bundle into frontend/dist
 ```
 
 API docs: http://localhost:8000/docs
@@ -59,10 +68,14 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 - `POST /milestones/{id}/dispute`, `GET /review/queue`, & `POST /review/{id}/decision`: challenge window holds, dispute escalation, and human reviewer resolution.
 - `POST /projects/{id}/release-holdback`: releases the retained holdback tranche only after all regular milestones have settled with no open disputes.
 
-## Phase 6: web UI, AG Grid Reviewer Console & Public Ledger
-- Served directly at `http://localhost:8000/` ([`frontend/index.html`](frontend/index.html), [`frontend/app.js`](frontend/app.js)).
-- **1-Click Showcase Seeder** (`POST /demo/seed`): populates a 3-milestone project demonstrating (1) a verified, vendor-confirmed, settled PayPal payout in the Public Ledger, (2) a near-duplicate resized photo + receipt mismatch caught by the Skeptic Agent, and (3) a challenge-window beneficiary dispute.
-- **AG Grid Reviewer Console & Public Ledger**: interactive filterable grids with fraud-risk highlighting, side-panel evidence/dispute resolution, quick search, and CSV export.
+## Phase 6: Production React Role-Based Frontend & Human-Readable Audit Trail
+- Built with **React 18**, **Vite 5**, **Tailwind CSS 3**, **`ag-grid-react`**, and **`lucide-react`** ([`frontend/src/App.jsx`](frontend/src/App.jsx)).
+- Organized into 5 role-based workspaces:
+  1. **Donor Portal** ([`DonorWorkspace.jsx`](frontend/src/components/DonorWorkspace.jsx)): Grant portfolio tracking, Gemini Contract Agent milestone structuring, PayPal Order funding, and retention holdback release.
+  2. **NGO Field Partner** ([`NgoWorkspace.jsx`](frontend/src/components/NgoWorkspace.jsx)): One-time 6-digit challenge code generation, WebRTC live camera + real file upload, multimodal Gemini Verifier & Skeptic inspection, third-party invite dispatch, and PayPal tranche payout execution.
+  3. **External Verifier** ([`VerifierWorkspace.jsx`](frontend/src/components/VerifierWorkspace.jsx)): Independent Vendor/Beneficiary magic-link attestation portal and whistleblower challenge-window dispute filing.
+  4. **Compliance Auditor** ([`AuditorWorkspace.jsx`](frontend/src/components/AuditorWorkspace.jsx)): `AgGridReact` escalation queue (`#reviewGrid`), side-by-side case inspector with manual override (`APPROVE`/`REJECT`), Network Collusion Graph monitor, and 12-scenario Red-Team benchmark runner.
+  5. **Public Transparency** ([`PublicWorkspace.jsx`](frontend/src/components/PublicWorkspace.jsx) & [`AuditTimeline.jsx`](frontend/src/components/AuditTimeline.jsx)): Zero-PII `AgGridReact` public disbursement ledger (`#ledgerGrid`) with CSV export and a categorized, searchable, plain-English Security Audit Trail.
 
 ## Phase 7 & 8: Red-Team Benchmark, Collusion Graph, Deployment & Docs
 - **Red-Team Evaluation Suite** (`POST /eval/redteam/run`, [`eval/run_redteam.py`](eval/run_redteam.py), [`eval/results.md`](eval/results.md)): runs 12 synthetic scenarios (9 attack vectors + 3 legitimate baselines) across all defense layers.
