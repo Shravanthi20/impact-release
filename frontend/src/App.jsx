@@ -6,15 +6,22 @@ import {
   UserCheck,
   Scale,
   Globe,
-  Database,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
   LogIn,
   LogOut,
   User,
+  ArrowRight,
 } from "lucide-react";
-import { api, formatCurrency, getStoredUser, setAuthToken, setStoredUser } from "./api.js";
+import {
+  api,
+  formatCurrency,
+  getStoredUser,
+  setAuthToken,
+  setStoredUser,
+} from "./api.js";
+import LandingPage from "./components/LandingPage.jsx";
 import DonorWorkspace from "./components/DonorWorkspace.jsx";
 import NgoWorkspace from "./components/NgoWorkspace.jsx";
 import VerifierWorkspace from "./components/VerifierWorkspace.jsx";
@@ -22,53 +29,12 @@ import AuditorWorkspace from "./components/AuditorWorkspace.jsx";
 import PublicWorkspace from "./components/PublicWorkspace.jsx";
 import AuthModal from "./components/AuthModal.jsx";
 
-const ROLES = [
-  {
-    id: "donor",
-    label: "Sponsor Dashboard",
-    persona: "Asha Foundation (Grantmaker)",
-    badge: "Fund & Structure Grants",
-    icon: Briefcase,
-  },
-  {
-    id: "ngo",
-    label: "NGO Dashboard",
-    persona: "Vidya Grassroots Trust",
-    badge: "Submit Proof & Request Payouts",
-    icon: Camera,
-  },
-  {
-    id: "verifier",
-    label: "External Verifier",
-    persona: "Vendor / School Principal",
-    badge: "Confirm Delivery or Dispute",
-    icon: UserCheck,
-  },
-  {
-    id: "auditor",
-    label: "Admin & Compliance",
-    persona: "Risk & Audit Operations",
-    badge: "Review Escalations & Collusion",
-    icon: Scale,
-  },
-  {
-    id: "public",
-    label: "Public Transparency",
-    persona: "Open Ledger & Audit Trail",
-    badge: "Zero-PII Public Record",
-    icon: Globe,
-  },
-];
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [activeRole, setActiveRole] = useState(() => {
-    const u = getStoredUser();
-    if (u?.role === "ngo") return "ngo";
-    if (u?.role === "reviewer") return "auditor";
-    return "donor";
-  });
+  const [authModalRole, setAuthModalRole] = useState("donor");
+  const [viewingPublicPortal, setViewingPublicPortal] = useState(false);
+  const [viewingVerifierPortal, setViewingVerifierPortal] = useState(false);
 
   const [health, setHealth] = useState(null);
   const [users, setUsers] = useState([]);
@@ -84,7 +50,6 @@ export default function App() {
   const [audit, setAudit] = useState([]);
   const [activeInvites, setActiveInvites] = useState([]);
   const [toast, setToast] = useState(null);
-  const [seeding, setSeeding] = useState(false);
 
   const notify = useCallback((message, type = "info") => {
     setToast({ message, type, ts: Date.now() });
@@ -109,7 +74,7 @@ export default function App() {
       setRiskGraph(rg);
       setAudit(au);
     } catch (err) {
-      notify(`Failed to sync workspace state: ${err.message}`, "error");
+      notify(`Sync notice: ${err.message}`, "error");
     }
   }, [notify]);
 
@@ -117,14 +82,12 @@ export default function App() {
     refreshAll();
   }, [refreshAll]);
 
-  // Sync active user role tab when user logs in
   function handleLoginSuccess(user) {
     setCurrentUser(user);
     setShowAuthModal(false);
-    if (user.role === "ngo") setActiveRole("ngo");
-    else if (user.role === "reviewer") setActiveRole("auditor");
-    else setActiveRole("donor");
-    notify(`Signed in as ${user.name} (${user.role.toUpperCase()})`);
+    setViewingPublicPortal(false);
+    setViewingVerifierPortal(false);
+    notify(`Signed in as ${user.name}`);
     refreshAll();
   }
 
@@ -132,23 +95,21 @@ export default function App() {
     setAuthToken("");
     setStoredUser(null);
     setCurrentUser(null);
-    notify("Signed out of session");
+    setViewingPublicPortal(false);
+    setViewingVerifierPortal(false);
+    notify("Signed out");
   }
 
-  async function handleSeedPortfolio() {
-    setSeeding(true);
-    try {
-      notify("Initializing sample grant portfolio and verified milestone records...");
-      await api("/demo/seed", { method: "POST" });
-      await refreshAll();
-      notify("Sample grant portfolio loaded across all role dashboards.");
-    } catch (err) {
-      notify(`Failed to seed sample portfolio: ${err.message}`, "error");
-    } finally {
-      setSeeding(false);
-    }
+  function handleOpenAuth(role = "donor") {
+    setAuthModalRole(role);
+    setShowAuthModal(true);
   }
 
+  // Determine current active view:
+  // If not logged in and not exploring public or verifier, show Landing Page.
+  const isLandingView = !currentUser && !viewingPublicPortal && !viewingVerifierPortal;
+
+  // KPIs for the logged in user's role
   const kpis = useMemo(() => {
     const totalFunded = projects.reduce((acc, p) => acc + (p.funded || 0), 0);
     const totalReleased = projects.reduce(
@@ -163,279 +124,318 @@ export default function App() {
     };
   }, [projects, reviewQueue]);
 
-  const currentRoleMeta =
-    ROLES.find((r) => r.id === activeRole) || ROLES[0];
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      {/* Top Enterprise Header */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+      {/* Top Application Navbar */}
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          {/* Brand Logo & Name */}
+          <button
+            onClick={() => {
+              setViewingPublicPortal(false);
+              setViewingVerifierPortal(false);
+            }}
+            className="flex items-center gap-3 text-left focus:outline-none cursor-pointer"
+          >
             <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-extrabold text-sm shadow-inner">
               IR
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base tracking-tight">
-                  ImpactRelease
-                </span>
-                <span className="hidden sm:inline-block text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                  PayPal Escrow &amp; Payouts + Gemini Anti-Fraud AI
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 hidden md:block">
-                Enterprise Milestone Grant Escrow &amp; Autonomous Multimodal Payout Platform
-              </p>
-            </div>
-          </div>
-
-          {/* Right controls: User Profile / Auth Button + Demo Seeder */}
-          <div className="flex items-center gap-2.5">
-            <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-300 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700">
-              <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-              <span>
-                PayPal:{" "}
-                <strong className="uppercase text-white">
-                  {health?.paypal_mode || "sandbox"}
-                </strong>
+              <span className="font-bold text-base tracking-tight text-white block">
+                ImpactRelease
               </span>
-              <span className="text-slate-600">|</span>
-              <span>
-                AI:{" "}
-                <strong className="uppercase text-teal-300">
-                  {health?.llm_provider || "gemini"}
-                </strong>
+              <span className="text-[11px] text-slate-400 block leading-none">
+                Milestone Grant Escrow &amp; Verifiable Disbursements
               </span>
             </div>
+          </button>
 
+          {/* Right Action Navigation */}
+          <div className="flex items-center gap-3">
+            {/* Quick Public Portal & Verifier Links */}
             <button
-              type="button"
-              onClick={handleSeedPortfolio}
-              disabled={seeding}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-500 text-white transition shadow-sm disabled:opacity-50"
+              onClick={() => {
+                setViewingPublicPortal(true);
+                setViewingVerifierPortal(false);
+              }}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                viewingPublicPortal
+                  ? "bg-slate-800 text-teal-300 ring-1 ring-teal-500/40"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800"
+              }`}
             >
-              <Database className="w-3.5 h-3.5" />
-              {seeding ? "Loading..." : "Load Demo Data"}
+              Public Transparency
             </button>
 
-            {/* Authentication Button / User Chip */}
+            <button
+              onClick={() => {
+                setViewingVerifierPortal(true);
+                setViewingPublicPortal(false);
+              }}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                viewingVerifierPortal
+                  ? "bg-slate-800 text-teal-300 ring-1 ring-teal-500/40"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              Verifier Sign-Off
+            </button>
+
+            {/* Authenticated User Status or Sign-In Trigger */}
             {currentUser ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-700">
+              <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
                 <div className="text-right hidden sm:block">
                   <div className="text-xs font-bold text-slate-200">
                     {currentUser.name}
                   </div>
-                  <div className="text-[10px] text-teal-400 uppercase font-semibold">
-                    {currentUser.role}
+                  <div className="text-[10px] text-teal-400 font-semibold uppercase tracking-wide">
+                    {currentUser.role === "donor"
+                      ? "Grant Sponsor"
+                      : currentUser.role === "ngo"
+                      ? "NGO Partner"
+                      : "Compliance Admin"}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleLogout}
                   title="Sign Out"
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 transition"
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 transition cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
+              <div className="flex items-center gap-2 pl-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenAuth("donor")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-500 hover:bg-teal-400 text-slate-950 transition shadow-sm cursor-pointer"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  Sign In
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Role context breadcrumb if authenticated */}
+        {currentUser && !viewingPublicPortal && !viewingVerifierPortal && (
+          <div className="bg-slate-950/70 border-t border-slate-800/80 px-4 sm:px-6 lg:px-8 py-2">
+            <div className="max-w-7xl mx-auto flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-slate-300">
+                <span className="font-semibold text-teal-400 uppercase tracking-wider text-[10px]">
+                  Active Workspace:
+                </span>
+                <span className="font-bold text-white">
+                  {currentUser.role === "donor" && "Sponsor Grant Portfolio & Milestone Contracts"}
+                  {currentUser.role === "ngo" && "NGO Field Delivery, Invoices & PayPal Tranche Payouts"}
+                  {currentUser.role === "reviewer" && "Admin Review, Fraud Quarantine & Collusion Graph"}
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowAuthModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-900 hover:bg-slate-100 transition shadow-sm"
+                onClick={refreshAll}
+                className="text-slate-400 hover:text-white inline-flex items-center gap-1 cursor-pointer"
               >
-                <LogIn className="w-3.5 h-3.5 text-teal-700" />
-                Sign In / Register
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Refresh Data</span>
               </button>
-            )}
-
-            <button
-              type="button"
-              onClick={refreshAll}
-              title="Refresh Data"
-              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Role Navigation Bar (Tabs for Dashboards) */}
-        <div className="bg-slate-950/70 border-t border-slate-800/80">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between overflow-x-auto py-2 gap-2">
-            <div className="flex items-center gap-1.5">
-              {ROLES.map((r) => {
-                const Icon = r.icon;
-                const active = activeRole === r.id;
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setActiveRole(r.id)}
-                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                      active
-                        ? "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400/30"
-                        : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{r.label}</span>
-                    {r.id === "auditor" && kpis.quarantined > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                        {kpis.quarantined}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 shrink-0">
-              <span>Viewing Context:</span>
-              <strong className="text-slate-200 font-semibold">
-                {currentRoleMeta.persona}
-              </strong>
             </div>
           </div>
-        </div>
+        )}
       </header>
 
-      {/* Main Content Container */}
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6">
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col">
         {/* Toast notification */}
         {toast && (
-          <div
-            className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-xs font-medium shadow-sm animate-fade-in ${
-              toast.type === "error"
-                ? "bg-rose-50 border-rose-200 text-rose-900"
-                : "bg-teal-50/90 border-teal-200 text-teal-950"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {toast.type === "error" ? (
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
-              )}
-              <span>{toast.message}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setToast(null)}
-              className="text-slate-500 hover:text-slate-800 font-semibold"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Executive KPI Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <span className="text-xs font-semibold text-slate-500">
-              Active Grant Contracts
-            </span>
-            <div className="text-2xl font-extrabold text-slate-900 mt-1">
-              {kpis.grants}
-            </div>
-            <span className="text-[11px] text-slate-500">
-              Milestone-escrowed programs
-            </span>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <span className="text-xs font-semibold text-slate-500">
-              Escrow Funded (PayPal Orders)
-            </span>
-            <div className="text-2xl font-extrabold text-slate-900 mt-1">
-              {formatCurrency(kpis.funded)}
-            </div>
-            <span className="text-[11px] text-emerald-700 font-medium">
-              Captured &amp; ring-fenced
-            </span>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <span className="text-xs font-semibold text-slate-500">
-              Verified &amp; Disbursed (PayPal Payouts)
-            </span>
-            <div className="text-2xl font-extrabold text-teal-700 mt-1">
-              {formatCurrency(kpis.released)}
-            </div>
-            <span className="text-[11px] text-slate-500">
-              Released on multi-party proof
-            </span>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-            <span className="text-xs font-semibold text-slate-500">
-              Admin Compliance Queue
-            </span>
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4">
             <div
-              className={`text-2xl font-extrabold mt-1 ${
-                kpis.quarantined > 0 ? "text-rose-600" : "text-slate-900"
+              className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-xs font-medium shadow-sm animate-fade-in ${
+                toast.type === "error"
+                  ? "bg-rose-50 border-rose-200 text-rose-900"
+                  : "bg-teal-50 border-teal-200 text-teal-950"
               }`}
             >
-              {kpis.quarantined}
+              <div className="flex items-center gap-2">
+                {toast.type === "error" ? (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                )}
+                <span>{toast.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+              >
+                Dismiss
+              </button>
             </div>
-            <span className="text-[11px] text-slate-500">
-              Flagged or disputed tranches
-            </span>
           </div>
-        </div>
+        )}
 
-        {/* Active Role Dashboard */}
-        {activeRole === "donor" && (
-          <DonorWorkspace
-            projects={projects}
-            users={users}
-            onRefresh={refreshAll}
-            notify={notify}
+        {/* View 1: Landing Page (For Unauthenticated Visitors) */}
+        {isLandingView && (
+          <LandingPage
+            onGetStarted={(role) => handleOpenAuth(role)}
+            onExplorePublic={() => setViewingPublicPortal(true)}
           />
         )}
 
-        {activeRole === "ngo" && (
-          <NgoWorkspace
-            projects={projects}
-            users={users}
-            onRefresh={refreshAll}
-            notify={notify}
-            onInviteCreated={(newInvites) =>
-              setActiveInvites((prev) => [...newInvites, ...prev])
-            }
-          />
+        {/* View 2: Public Transparency Portal */}
+        {viewingPublicPortal && (
+          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">
+                  Public Transparency &amp; Proof-of-Impact Portal
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time cryptographic audit log and settled PayPal milestone payouts open to all stakeholders.
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingPublicPortal(false)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 transition cursor-pointer"
+              >
+                ← Back
+              </button>
+            </div>
+            <PublicWorkspace ledger={ledger} audit={audit} />
+          </div>
         )}
 
-        {activeRole === "verifier" && (
-          <VerifierWorkspace
-            projects={projects}
-            activeInvites={activeInvites}
-            onInviteCreated={(newInvites) =>
-              setActiveInvites((prev) => [...newInvites, ...prev])
-            }
-            onRefresh={refreshAll}
-            notify={notify}
-          />
+        {/* View 3: External Verifier / Beneficiary Attestation Portal */}
+        {viewingVerifierPortal && (
+          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">
+                  External Field Verifier &amp; Beneficiary Sign-Off
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Confirm receipt of goods/services using magic tokens, or file an unfulfilled work dispute.
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingVerifierPortal(false)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 transition cursor-pointer"
+              >
+                ← Back
+              </button>
+            </div>
+            <VerifierWorkspace
+              projects={projects}
+              activeInvites={activeInvites}
+              onInviteCreated={(newInvites) =>
+                setActiveInvites((prev) => [...newInvites, ...prev])
+              }
+              onRefresh={refreshAll}
+              notify={notify}
+            />
+          </div>
         )}
 
-        {activeRole === "auditor" && (
-          <AuditorWorkspace
-            reviewQueue={reviewQueue}
-            riskGraph={riskGraph}
-            onRefresh={refreshAll}
-            notify={notify}
-          />
-        )}
+        {/* View 4: Authenticated Role-Specific Dashboards */}
+        {currentUser && !viewingPublicPortal && !viewingVerifierPortal && (
+          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            {/* Executive KPI Strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500">
+                  Active Grant Programs
+                </span>
+                <div className="text-2xl font-extrabold text-slate-900 mt-1">
+                  {kpis.grants}
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  Milestone-escrowed contracts
+                </span>
+              </div>
 
-        {activeRole === "public" && (
-          <PublicWorkspace ledger={ledger} audit={audit} />
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500">
+                  Escrow Balance (PayPal Orders)
+                </span>
+                <div className="text-2xl font-extrabold text-slate-900 mt-1">
+                  {formatCurrency(kpis.funded)}
+                </div>
+                <span className="text-[11px] text-emerald-700 font-medium">
+                  Protected &amp; ring-fenced
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500">
+                  Disbursed (PayPal Payouts)
+                </span>
+                <div className="text-2xl font-extrabold text-teal-700 mt-1">
+                  {formatCurrency(kpis.released)}
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  Released upon verified proof
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <span className="text-xs font-semibold text-slate-500">
+                  Pending Audit Reviews
+                </span>
+                <div
+                  className={`text-2xl font-extrabold mt-1 ${
+                    kpis.quarantined > 0 ? "text-rose-600" : "text-slate-900"
+                  }`}
+                >
+                  {kpis.quarantined}
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  Flagged or disputed tranches
+                </span>
+              </div>
+            </div>
+
+            {/* Dedicated Role Dashboard */}
+            {currentUser.role === "donor" && (
+              <DonorWorkspace
+                projects={projects}
+                users={users}
+                onRefresh={refreshAll}
+                notify={notify}
+              />
+            )}
+
+            {currentUser.role === "ngo" && (
+              <NgoWorkspace
+                projects={projects}
+                users={users}
+                onRefresh={refreshAll}
+                notify={notify}
+                onInviteCreated={(newInvites) =>
+                  setActiveInvites((prev) => [...newInvites, ...prev])
+                }
+              />
+            )}
+
+            {currentUser.role === "reviewer" && (
+              <AuditorWorkspace
+                reviewQueue={reviewQueue}
+                riskGraph={riskGraph}
+                onRefresh={refreshAll}
+                notify={notify}
+              />
+            )}
+          </div>
         )}
       </main>
 
-      {/* Sign-in / Sign-up Modal */}
+      {/* Authentication Modal */}
       {showAuthModal && (
         <AuthModal
+          initialRole={authModalRole}
           onLoginSuccess={handleLoginSuccess}
           onClose={() => setShowAuthModal(false)}
         />

@@ -4,16 +4,14 @@ import {
   Mail,
   User,
   Building2,
-  CreditCard,
   ArrowRight,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { api, setAuthToken, setStoredUser } from "../api.js";
 
-export default function AuthModal({ onLoginSuccess, onClose }) {
+export default function AuthModal({ initialRole = "donor", onLoginSuccess, onClose }) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [role, setRole] = useState("donor"); // donor, ngo, reviewer
+  const [role, setRole] = useState(initialRole); // donor, ngo, reviewer
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -22,26 +20,26 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const quickRoles = [
+  const accounts = [
     {
       id: "donor",
       title: "Grant Sponsor",
       desc: "Fund programs & approve milestones",
-      email: "donor@demo.impactrelease.org",
+      email: "donor@ashafoundation.org",
       name: "Asha Foundation",
     },
     {
       id: "ngo",
       title: "NGO Partner",
       desc: "Submit field proof & get tranches",
-      email: "ngo@demo.impactrelease.org",
+      email: "ngo@vidyatrust.org",
       name: "Vidya Grassroots Trust",
     },
     {
       id: "reviewer",
       title: "Compliance Admin",
       desc: "Audit claims & resolve fraud flags",
-      email: "admin@demo.impactrelease.org",
+      email: "admin@compliance.org",
       name: "Risk & Compliance Officer",
     },
   ];
@@ -84,7 +82,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
     }
   }
 
-  function handleFillQuick(preset) {
+  function handleSelectPersona(preset) {
     setRole(preset.id);
     setEmail(preset.email);
     setPassword("password123");
@@ -93,27 +91,27 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-fade-in">
       <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
         {/* Modal Header */}
         <div className="bg-slate-900 text-white p-6 relative">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-bold">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-300 font-bold text-sm">
               IR
             </div>
             <div>
               <h2 className="text-lg font-bold">
-                {isSignUp ? "Create an Account" : "Sign in to ImpactRelease"}
+                {isSignUp ? "Create an Organization Account" : "Sign In to Your Workspace"}
               </h2>
               <p className="text-xs text-slate-400">
-                AI-Verified Milestone Grants with PayPal Disbursements
+                Secure Milestone Grant Escrow &amp; Field Verification
               </p>
             </div>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="absolute top-6 right-6 text-slate-400 hover:text-white text-sm"
+              className="absolute top-6 right-6 text-slate-400 hover:text-white text-base cursor-pointer"
             >
               ✕
             </button>
@@ -121,19 +119,18 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Quick 1-Click Role Login Selector */}
           {!isSignUp && (
             <div className="space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                Quick Demo Credentials (1-Click Fill)
+                Select Your Registered Organization Role
               </span>
               <div className="grid grid-cols-3 gap-2">
-                {quickRoles.map((qr) => (
+                {accounts.map((qr) => (
                   <button
                     key={qr.id}
                     type="button"
-                    onClick={() => handleFillQuick(qr)}
-                    className={`p-2.5 rounded-xl border text-left transition ${
+                    onClick={() => handleSelectPersona(qr)}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                       role === qr.id && email === qr.email
                         ? "border-teal-600 bg-teal-50 ring-1 ring-teal-600"
                         : "border-slate-200 hover:border-slate-300 bg-slate-50/50"
@@ -168,18 +165,18 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                     <button
                       type="button"
                       onClick={() => setRole("donor")}
-                      className={`p-2 rounded-lg text-xs font-semibold border ${
+                      className={`p-2 rounded-lg text-xs font-semibold border cursor-pointer ${
                         role === "donor"
                           ? "bg-teal-700 text-white border-teal-700"
                           : "bg-white text-slate-700 border-slate-300"
                       }`}
                     >
-                      Sponsor / Donor
+                      Sponsor
                     </button>
                     <button
                       type="button"
                       onClick={() => setRole("ngo")}
-                      className={`p-2 rounded-lg text-xs font-semibold border ${
+                      className={`p-2 rounded-lg text-xs font-semibold border cursor-pointer ${
                         role === "ngo"
                           ? "bg-teal-700 text-white border-teal-700"
                           : "bg-white text-slate-700 border-slate-300"
@@ -190,7 +187,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                     <button
                       type="button"
                       onClick={() => setRole("reviewer")}
-                      className={`p-2 rounded-lg text-xs font-semibold border ${
+                      className={`p-2 rounded-lg text-xs font-semibold border cursor-pointer ${
                         role === "reviewer"
                           ? "bg-teal-700 text-white border-teal-700"
                           : "bg-white text-slate-700 border-slate-300"
@@ -223,7 +220,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                       type="text"
                       value={orgName}
                       onChange={(e) => setOrgName(e.target.value)}
-                      placeholder="e.g. Grassroots Trust"
+                      placeholder="e.g. Asha Foundation"
                       className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
                     />
                   </div>
@@ -239,7 +236,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                       required
                       value={paypalEmail}
                       onChange={(e) => setPaypalEmail(e.target.value)}
-                      placeholder="ngo-sandbox@paypal.com"
+                      placeholder="ngo-payouts@paypal.com"
                       className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
                     />
                   </div>
@@ -258,7 +255,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="user@example.org"
+                  placeholder="user@organization.org"
                   className="w-full text-xs pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
                 />
               </div>
@@ -284,7 +281,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm transition shadow-sm disabled:opacity-50"
+              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 "Authenticating..."
@@ -292,7 +289,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                 "Create Account & Proceed"
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>Sign In to Dashboard</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -307,7 +304,7 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                 <button
                   type="button"
                   onClick={() => setIsSignUp(false)}
-                  className="text-teal-700 font-bold hover:underline"
+                  className="text-teal-700 font-bold hover:underline cursor-pointer"
                 >
                   Sign in
                 </button>
@@ -318,9 +315,9 @@ export default function AuthModal({ onLoginSuccess, onClose }) {
                 <button
                   type="button"
                   onClick={() => setIsSignUp(true)}
-                  className="text-teal-700 font-bold hover:underline"
+                  className="text-teal-700 font-bold hover:underline cursor-pointer"
                 >
-                  Sign up
+                  Register new account
                 </button>
               </span>
             )}
