@@ -4,6 +4,7 @@ Agents ask for JSON and validate it with Pydantic. If the provider fails or retu
 output, callers fall back to the deterministic offline logic, so the app never hard-depends on
 an external service.
 """
+import base64
 import json
 import re
 from typing import Any
@@ -32,8 +33,11 @@ def llm_available() -> bool:
     return settings.llm_provider == "gemini" and bool(settings.gemini_api_key)
 
 
-def generate_json(system: str, user: str) -> Any:
+def generate_json(
+    system: str, user: str, images: list[tuple[str, bytes]] | None = None
+) -> Any:
     """Return parsed JSON from the configured provider, trying fallback models on failure.
+    ``images`` is an optional list of (mime_type, raw_bytes) pairs for multimodal calls.
     Raises LLMError if every model fails."""
     if not llm_available():
         raise LLMError("no LLM provider configured")
@@ -42,17 +46,27 @@ def generate_json(system: str, user: str) -> Any:
     errors = []
     for model in dict.fromkeys(models):
         try:
-            return _call_gemini(model, system, user)
+            return _call_gemini(model, system, user, images=images)
         except LLMError as e:
             errors.append(f"{model}: {e}")
     raise LLMError("; ".join(errors)[:600])
 
 
-def _call_gemini(model: str, system: str, user: str) -> Any:
+def _call_gemini(
+    model: str, system: str, user: str, images: list[tuple[str, bytes]] | None = None
+) -> Any:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    parts: list[dict[str, Any]] = [{"text": user}]
+    for mime_type, data in images or []:
+        parts.append({
+            "inlineData": {
+                "mimeType": mime_type,
+                "data": base64.b64encode(data).decode("ascii"),
+            }
+        })
     body = {
         "systemInstruction": {"parts": [{"text": system}]},
-        "contents": [{"role": "user", "parts": [{"text": user}]}],
+        "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
     }
     try:

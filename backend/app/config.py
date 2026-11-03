@@ -36,5 +36,12 @@ class Settings(BaseSettings):
     max_upload_mb: int = 10
     evidence_dir: str = str(ENV_FILE.parent / "data" / "evidence")
 
+    # Verification & similarity search (Phase 4)
+    similarity_backend: str = "local"  # local | elastic
+    elastic_url: str = ""
+    elastic_api_key: str = ""
+    elastic_index: str = "impactrelease-evidence"
+    phash_hamming_threshold: int = 10
+
 
 settings = Settings()

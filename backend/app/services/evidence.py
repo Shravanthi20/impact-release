@@ -17,6 +17,7 @@ from sqlmodel import Session, select
 from app.config import settings
 from app.db.models import Challenge, EvidenceItem, Milestone, Project, Submission, utcnow
 from app.services.release_service import audit
+from app.services.similarity import compute_phash
 
 ALLOWED_TYPES = {
     "image/jpeg": "photo", "image/png": "photo", "image/webp": "photo",
@@ -38,7 +39,9 @@ def issue_challenge(session: Session, milestone: Milestone, user_id: int) -> Cha
         raise EvidenceError("project is not funded")
     if user_id != milestone.payee_user_id:
         raise EvidenceError("only the milestone payee can request a challenge")
-    if milestone.status not in ("PENDING", "EVIDENCE_SUBMITTED"):
+    if milestone.status not in (
+        "PENDING", "EVIDENCE_SUBMITTED", "ANALYZED", "NEEDS_MORE_EVIDENCE", "HUMAN_REVIEW"
+    ):
         raise EvidenceError(f"milestone is {milestone.status}")
     now = utcnow()
     challenge = Challenge(milestone_id=milestone.id, issued_to=user_id,
@@ -105,7 +108,25 @@ def create_submission(session: Session, milestone: Milestone, challenge_id: int,
         if prior:
             flags.append({"flag": "DUPLICATE_FILE_REUSED", "detail": name,
                           "earlier_submission_id": prior.submission_id})
-        prepared.append((name, ctype, data, digest))
+        phash = compute_phash(data) if ALLOWED_TYPES[ctype] == "photo" else None
+        if phash:
+            prior_images = session.exec(
+                select(EvidenceItem).where(EvidenceItem.phash.is_not(None))
+            ).all()
+            for pi in prior_images:
+                if pi.sha256 != digest and pi.phash:
+                    from app.services.similarity import hamming_distance
+
+                    dist = hamming_distance(phash, pi.phash)
+                    if dist <= settings.phash_hamming_threshold:
+                        flags.append({
+                            "flag": "NEAR_DUPLICATE_IMAGE",
+                            "detail": name,
+                            "distance": dist,
+                            "earlier_submission_id": pi.submission_id,
+                        })
+                        break
+        prepared.append((name, ctype, data, digest, phash))
 
     submission = Submission(
         milestone_id=milestone.id, challenge_id=challenge.id, submitted_by=user_id,
@@ -118,13 +139,14 @@ def create_submission(session: Session, milestone: Milestone, challenge_id: int,
     out_dir = Path(settings.evidence_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     items = []
-    for name, ctype, data, digest in prepared:
+    for name, ctype, data, digest, phash in prepared:
         path = out_dir / digest  # content-addressed: filename never taken from the client
         if not path.exists():
             path.write_bytes(data)
         item = EvidenceItem(submission_id=submission.id, kind=ALLOWED_TYPES[ctype],
                             filename=Path(name).name[:200], content_type=ctype,
-                            size_bytes=len(data), sha256=digest, stored_path=str(path))
+                            size_bytes=len(data), sha256=digest, phash=phash,
+                            stored_path=str(path))
         session.add(item)
         items.append(item)
 

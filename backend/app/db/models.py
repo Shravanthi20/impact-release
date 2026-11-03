@@ -111,4 +111,17 @@ class EvidenceItem(SQLModel, table=True):
     content_type: str
     size_bytes: int
     sha256: str = Field(index=True)
+    phash: Optional[str] = Field(default=None, index=True)
+    extracted_text: str = ""
     stored_path: str
+
+
+class Analysis(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    submission_id: int = Field(foreign_key="submission.id", index=True)
+    agent: str  # verifier | skeptic
+    source: str = "offline"  # llm | offline
+    signals_json: str = "{}"
+    score: float = 0.0  # verifier: confidence (0..1); skeptic: fraud_risk (0..1)
+    explanation: str = ""
+    created_at: datetime = Field(default_factory=utcnow)

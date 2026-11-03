@@ -9,6 +9,7 @@ from app.config import settings
 from app.db.models import EvidenceItem, Milestone, Submission
 from app.db.session import get_session
 from app.services import evidence as ev
+from app.services import verification as vf
 
 router = APIRouter()
 
@@ -67,7 +68,8 @@ async def submit_evidence(
     except ev.EvidenceError as e:
         raise HTTPException(422, str(e))
     return {"submission_id": sub.id, "status": sub.status, "flags": json.loads(sub.flags_json),
-            "files": [{"filename": i.filename, "sha256": i.sha256, "kind": i.kind} for i in items]}
+            "files": [{"filename": i.filename, "sha256": i.sha256, "phash": i.phash,
+                       "kind": i.kind} for i in items]}
 
 
 @router.get("/milestones/{milestone_id}/submissions")
@@ -81,6 +83,24 @@ def list_submissions(milestone_id: int, session: Session = Depends(get_session))
         out.append({"id": s.id, "status": s.status, "flags": json.loads(s.flags_json),
                     "captured_at": s.captured_at, "received_at": s.received_at,
                     "capture_source": s.capture_source, "geo": json.loads(s.geo_json),
-                    "files": [{"filename": i.filename, "sha256": i.sha256, "kind": i.kind,
-                               "size_bytes": i.size_bytes} for i in items]})
+                    "files": [{"filename": i.filename, "sha256": i.sha256, "phash": i.phash,
+                               "kind": i.kind, "size_bytes": i.size_bytes} for i in items]})
     return out
+
+
+@router.post("/submissions/{submission_id}/analyze")
+def run_submission_analysis(submission_id: int, session: Session = Depends(get_session)):
+    """Run the Verifier agent, similarity search, and Skeptic agent on a submission."""
+    try:
+        return vf.analyze_submission(session, submission_id)
+    except vf.VerificationError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.get("/submissions/{submission_id}/analysis")
+def get_submission_analysis(submission_id: int, session: Session = Depends(get_session)):
+    """Fetch stored Verifier + Skeptic analyses (running them first if not yet analyzed)."""
+    try:
+        return vf.get_submission_analysis(session, submission_id)
+    except vf.VerificationError as e:
+        raise HTTPException(404, str(e))

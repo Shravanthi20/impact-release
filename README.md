@@ -4,7 +4,7 @@ Programmable generosity: donors state an intent, AI agents turn it into verifiab
 check evidence from several independent angles, and release funds in tranches through
 **PayPal Payouts**, with an explained, public ledger.
 
-> Status: **Phase 3 complete** (PayPal funding/payout/webhooks/ledger, contract agent via free Gemini tier or offline fallback).
+> Status: **Phase 4 complete** (PayPal funding/payout/webhooks/ledger, contract agent, challenge-code evidence capture, multimodal Verifier + adversarial Skeptic agents, perceptual-hash & Elastic duplicate search)..
 > Fraud is made costlier and more likely to be caught. It is not eliminated.
 
 ## Run it locally
@@ -47,6 +47,12 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 - Flags (stored, not blocked): byte-identical file reused anywhere, capture not reported as in-app.
 - **Limit:** the server cannot prove a photo came from the in-app camera or that GPS is real. Those fields are claims for later cross-checks. Whether the code appears in the image is checked by the verifier agent in Phase 4.
 
+## Phase 4: verification, skeptic agent, and duplicate search
+- `POST /submissions/{id}/analyze` & `GET /submissions/{id}/analysis`.
+- **Verifier agent** ([`verifier_agent.py`](backend/app/agents/verifier_agent.py)): multimodal Gemini vision + offline fallback checks whether the one-time challenge code appears in the frame, extracts receipt amounts/text, and matches evidence against milestone requirements.
+- **Similarity & duplicate search** ([`similarity.py`](backend/app/services/similarity.py)): computes 64-bit perceptual difference hashes (`dHash`) so resized or recompressed duplicate photos are caught across all projects even when SHA-256 differs, plus receipt-text Jaccard similarity and optional Elasticsearch indexing/search (`SIMILARITY_BACKEND=elastic`).
+- **Adversarial Skeptic agent** ([`skeptic_agent.py`](backend/app/agents/skeptic_agent.py)): combines deterministic fraud signals (exact/near-duplicate images, missing challenge code, receipt amount mismatch, non-in-app capture) with an adversarial LLM pass. Deterministic rules set a floor on `fraud_risk` that the LLM can raise but never lower.
+
 ## Roadmap
 | Phase | Scope | Status |
 |---|---|---|
@@ -54,8 +60,8 @@ only code path that creates payouts. Amounts above `HUMAN_APPROVAL_THRESHOLD` ne
 | 1 | PayPal core: fund, payout, webhooks, ledger | Done |
 | 2 | Contract agent: intent to milestones | Done |
 | 3 | In-app capture, challenge codes, evidence hashing | Done |
-| 4 | Verifier + skeptic agents, Elastic duplicate search | Next |
-| 5 | Confirmations, rules engine, challenge window, holdback | |
+| 4 | Verifier + skeptic agents, perceptual-hash & Elastic duplicate search | Done |
+| 5 | Confirmations, rules engine, challenge window, holdback | Next |
 | 6 | Reviewer console and public ledger UI (AG Grid) | |
 | 7 | Red-team eval and hardening | |
 | 8 | Docs, deploy to Render, demo video | |
