@@ -2,9 +2,9 @@
 
 **ImpactRelease** is an automated, milestone-verified grant escrow and disbursement platform for donors, NGOs, and humanitarian organizations. Donors state their program objective in plain language, AI structures it into measurable, checkable tranches, and funds are automatically released via **PayPal Payouts** only when physical field evidence, invoices, and independent third-party attestations pass multi-angle verification.
 
-🌐 **Live Hosted Demo:** [https://impact-release.onrender.com/](https://impact-release.onrender.com/)  
-📖 **Interactive API Documentation:** [https://impact-release.onrender.com/docs](https://impact-release.onrender.com/docs)  
-📦 **Repository:** [https://github.com/Shravanthi20/impact-release](https://github.com/Shravanthi20/impact-release)
+ **Live Hosted Demo:** [https://impact-release.onrender.com/](https://impact-release.onrender.com/)  
+ **Interactive API Documentation:** [https://impact-release.onrender.com/docs](https://impact-release.onrender.com/docs)  
+
 
 ---
 
