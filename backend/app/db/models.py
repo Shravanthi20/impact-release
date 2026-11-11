@@ -13,7 +13,8 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     role: str  # donor | ngo | vendor | reviewer
     name: str
-    email: str
+    email: str = Field(index=True, unique=True)
+    password_hash: Optional[str] = None
     paypal_email: Optional[str] = None
     trust_tier: int = 0
     created_at: datetime = Field(default_factory=utcnow)

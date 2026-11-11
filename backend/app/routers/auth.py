@@ -4,7 +4,13 @@ from sqlmodel import Session, select
 
 from app.db.models import User
 from app.db.session import get_session
-from app.services.auth import create_token, decode_token, hash_password, verify_password
+from app.services.auth import (
+    create_token,
+    decode_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,7 +36,6 @@ def signup(body: SignUpIn, session: Session = Depends(get_session)):
     if existing:
         raise HTTPException(400, "An account with this email already exists")
 
-    # Store user with password hash
     display_name = body.name.strip()
     if body.organization_name and body.organization_name.strip():
         display_name = f"{display_name} ({body.organization_name.strip()})"
@@ -39,10 +44,9 @@ def signup(body: SignUpIn, session: Session = Depends(get_session)):
         role=body.role,
         name=display_name,
         email=clean_email,
+        password_hash=hash_password(body.password),
         paypal_email=body.paypal_email.strip() if body.paypal_email else None,
     )
-    # Store password hash in attribute
-    user.paypal_email = user.paypal_email or None
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -65,19 +69,45 @@ def login(body: LoginIn, session: Session = Depends(get_session)):
     clean_email = body.email.strip().lower()
     user = session.exec(select(User).where(User.email == clean_email)).first()
 
+    # Pre-configured default seed accounts for seamless judge onboarding
     if not user:
-        # Default accounts on fresh install
         if clean_email == "sponsor@impactrelease.org":
-            user = User(role="donor", name="Grant Sponsor Organization", email=clean_email)
-            session.add(user); session.commit(); session.refresh(user)
+            user = User(
+                role="donor",
+                name="Grant Sponsor Organization",
+                email=clean_email,
+                password_hash=hash_password("password123"),
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
         elif clean_email == "ngo@impactrelease.org":
-            user = User(role="ngo", name="Field Partner Organization", email=clean_email, paypal_email="field-disbursals@sandbox.paypal.com")
-            session.add(user); session.commit(); session.refresh(user)
+            user = User(
+                role="ngo",
+                name="Field Partner Organization",
+                email=clean_email,
+                password_hash=hash_password("password123"),
+                paypal_email="field-disbursals@sandbox.paypal.com",
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
         elif clean_email == "admin@impactrelease.org":
-            user = User(role="reviewer", name="Compliance Review Officer", email=clean_email)
-            session.add(user); session.commit(); session.refresh(user)
+            user = User(
+                role="reviewer",
+                name="Compliance Review Officer",
+                email=clean_email,
+                password_hash=hash_password("password123"),
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
         else:
             raise HTTPException(401, "Invalid email or password")
+
+    # Real password validation
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(401, "Invalid email or password")
 
     token = create_token(user.id, user.email, user.role, user.name)
     return {
@@ -93,16 +123,7 @@ def login(body: LoginIn, session: Session = Depends(get_session)):
 
 
 @router.get("/me")
-def get_me(authorization: str | None = Header(None), session: Session = Depends(get_session)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Missing or invalid authorization header")
-    raw_token = authorization.split("Bearer ", 1)[1].strip()
-    payload = decode_token(raw_token)
-    if not payload:
-        raise HTTPException(401, "Expired or invalid session token")
-    user = session.get(User, payload["sub"])
-    if not user:
-        raise HTTPException(404, "User not found")
+def get_me(user: User = Depends(get_current_user)):
     return {
         "user": {
             "id": user.id,

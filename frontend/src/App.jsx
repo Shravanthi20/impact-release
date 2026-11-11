@@ -71,7 +71,20 @@ export default function App() {
 
   useEffect(() => {
     refreshAll();
-  }, [refreshAll]);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("funded") === "true") {
+      notify(
+        "PayPal sandbox payment verified and escrow funds captured successfully!"
+      );
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get("payment_cancelled") === "true") {
+      notify("PayPal checkout was cancelled by user.", "error");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get("payment_error")) {
+      notify(`PayPal payment issue: ${params.get("payment_error")}`, "error");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [refreshAll, notify]);
 
   function handleLoginSuccess(user) {
     setCurrentUser(user);

@@ -115,7 +115,12 @@ export default function DonorWorkspace({
         }),
       });
       const pid = created.project.id;
-      await api(`/projects/${pid}/fund`, { method: "POST" });
+      const fundRes = await api(`/projects/${pid}/fund`, { method: "POST" });
+      if (fundRes?.approve_url && fundRes.approve_url.includes("sandbox.paypal.com")) {
+        notify("Redirecting to PayPal Sandbox checkout to approve grant funding...");
+        window.location.href = fundRes.approve_url;
+        return;
+      }
       await api(`/projects/${pid}/fund/capture`, { method: "POST" });
       setDraft(null);
       setSelectedProjectId(pid);

@@ -1,6 +1,9 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
@@ -135,6 +138,33 @@ def capture_project_funding(project_id: int, session: Session = Depends(get_sess
     except (rs.ReleaseError, PayPalError) as e:
         raise HTTPException(400, str(e))
     return funding
+
+
+@router.get("/funding/return", include_in_schema=False)
+def funding_return(
+    token: str = Query(default=""),
+    PayerID: str | None = Query(default=None),
+    session: Session = Depends(get_session),
+    pp: PayPalClient = Depends(get_paypal),
+):
+    """Callback when donor completes PayPal checkout approval in sandbox or live."""
+    if not token:
+        return RedirectResponse(url="/?payment_error=missing_token")
+    funding = session.exec(select(Funding).where(Funding.paypal_order_id == token)).first()
+    if not funding:
+        return RedirectResponse(url="/?payment_error=order_not_found")
+    if funding.status != "CAPTURED":
+        try:
+            rs.capture_funding(session, pp, funding)
+        except Exception as e:
+            return RedirectResponse(url=f"/?payment_error={quote(str(e))}")
+    return RedirectResponse(url=f"/?funded=true&project_id={funding.project_id}")
+
+
+@router.get("/funding/cancel", include_in_schema=False)
+def funding_cancel(token: str | None = Query(default=None)):
+    """Callback when donor cancels PayPal checkout."""
+    return RedirectResponse(url="/?payment_cancelled=true")
 
 
 # ---------- milestones & payouts ----------

@@ -169,7 +169,7 @@ export default function LandingPage({ onGetStarted, onExplorePublic }) {
                   {p.step}
                 </span>
                 <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${p.accent}`}>
-                  Phase {idx + 1}
+                  Step {idx + 1}
                 </span>
               </div>
               <h3 className="text-base font-bold text-warmgray-900">

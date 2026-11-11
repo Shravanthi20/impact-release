@@ -14,83 +14,6 @@ import {
 } from "lucide-react";
 import { api, formatCurrency, statusBadgeClass } from "../api.js";
 
-function generateFieldReceiptBlob(code, amount, milestoneTitle) {
-  return new Promise((resolve) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 640;
-    canvas.height = 420;
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#e6e2d8";
-    ctx.fillRect(0, 0, 640, 420);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(32, 28, 350, 364);
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(32, 28, 350, 364);
-
-    ctx.fillStyle = "#183e27";
-    ctx.font = "bold 18px Georgia, serif";
-    ctx.fillText("FIELD LOGISTICS & EQUIPMENT", 52, 68);
-
-    ctx.fillStyle = "#474037";
-    ctx.font = "12px sans-serif";
-    ctx.fillText("Delivery Manifest & Tax Invoice", 52, 92);
-    ctx.fillText(
-      `Deliverable: ${(milestoneTitle || "Grant Milestone").slice(0, 32)}`,
-      52,
-      118
-    );
-
-    ctx.strokeStyle = "#e6e2d8";
-    ctx.beginPath();
-    ctx.moveTo(52, 134);
-    ctx.lineTo(362, 134);
-    ctx.stroke();
-
-    ctx.fillStyle = "#27231e";
-    ctx.font = "13px sans-serif";
-    ctx.fillText("1. Field Materials & Procurement Units", 52, 166);
-    ctx.fillText("2. On-Site Community Installation Record", 52, 194);
-    ctx.fillText("3. Beneficiary Sign-Off & Photo Record", 52, 222);
-
-    ctx.fillStyle = "#f2f9f4";
-    ctx.fillRect(52, 256, 310, 64);
-    ctx.strokeStyle = "#24643b";
-    ctx.strokeRect(52, 256, 310, 64);
-
-    ctx.fillStyle = "#1e4f30";
-    ctx.font = "bold 20px sans-serif";
-    ctx.fillText(`TRANCHE AMOUNT: $${Number(amount || 300).toFixed(2)}`, 68, 296);
-
-    ctx.fillStyle = "#827765";
-    ctx.font = "11px sans-serif";
-    ctx.fillText("Verified Field Disbursement Claim", 52, 356);
-
-    // Handwritten challenge placard held next to invoice
-    ctx.fillStyle = "#fdf6f2";
-    ctx.fillRect(404, 70, 206, 220);
-    ctx.strokeStyle = "#c85227";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(404, 70, 206, 220);
-
-    ctx.fillStyle = "#a63f1f";
-    ctx.font = "bold 13px sans-serif";
-    ctx.fillText("LIVE ONE-TIME CHALLENGE", 420, 108);
-    ctx.fillStyle = "#183e27";
-    ctx.font = "bold 36px monospace";
-    ctx.fillText(String(code || "000000"), 438, 168);
-
-    ctx.fillStyle = "#6e2e1c";
-    ctx.font = "11px sans-serif";
-    ctx.fillText("Field Placard Evidence Frame", 432, 212);
-    ctx.fillText(new Date().toISOString().slice(0, 10), 458, 236);
-
-    canvas.toBlob((blob) => resolve(blob), "image/png");
-  });
-}
-
 export default function NgoWorkspace({
   projects = [],
   users = [],
@@ -172,7 +95,7 @@ export default function NgoWorkspace({
       setCameraActive(true);
     } catch (err) {
       notify(
-        `Camera unavailable (${err.message}). Use upload or sample evidence generator.`,
+        `Camera unavailable (${err.message}). Please upload photo files directly.`,
         "error"
       );
     }
@@ -222,29 +145,6 @@ export default function NgoWorkspace({
       notify(`Could not generate code: ${err.message}`, "error");
       return null;
     }
-  }
-
-  async function handleAttachSampleReceipt() {
-    if (!activeMilestone) return;
-    let activeChallenge = challenge;
-    if (!activeChallenge) {
-      activeChallenge = await handleIssueChallenge();
-    }
-    const activeCode = activeChallenge?.code || "123456";
-    const blob = await generateFieldReceiptBlob(
-      activeCode,
-      activeMilestone.tranche_amount,
-      activeMilestone.title
-    );
-    const file = new File(
-      [blob],
-      `field-receipt-m${activeMilestone.id}-${activeCode}.png`,
-      { type: "image/png" }
-    );
-    setSelectedFiles([file]);
-    notify(
-      `Prepared field manifest photo with challenge placard ${activeCode} ($${activeMilestone.tranche_amount}).`
-    );
   }
 
   function handleDetectGps() {
@@ -520,14 +420,6 @@ export default function NgoWorkspace({
                 Capture the one-time code alongside delivery goods or vendor tax invoice.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleAttachSampleReceipt}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-forest-50 text-forest-800 border border-forest-200 hover:bg-forest-100 transition cursor-pointer"
-            >
-              <FileCheck2 className="w-3.5 h-3.5" />
-              Attach Sample Field Photo (${activeMilestone.tranche_amount})
-            </button>
           </div>
 
           <div className="flex gap-2">

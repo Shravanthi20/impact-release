@@ -5,7 +5,12 @@ import json
 import time
 from typing import Optional
 
+from fastapi import Depends, Header, HTTPException
+from sqlmodel import Session
+
 from app.config import settings
+from app.db.models import User
+from app.db.session import get_session
 
 AUTH_SECRET = getattr(settings, "auth_secret", "impactrelease-secret-key-32bytes-auth")
 
@@ -15,7 +20,9 @@ def hash_password(password: str) -> str:
     return hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(plain_password: str, hashed_password: str | None) -> bool:
+    if not hashed_password:
+        return False
     return hmac.compare_digest(hash_password(plain_password), hashed_password)
 
 
@@ -48,3 +55,30 @@ def decode_token(token: str) -> Optional[dict]:
         return payload
     except Exception:
         return None
+
+
+def get_current_user(
+    authorization: str | None = Header(None), session: Session = Depends(get_session)
+) -> User:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required (missing Bearer token)")
+    raw_token = authorization.split("Bearer ", 1)[1].strip()
+    payload = decode_token(raw_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Expired or invalid session token")
+    user = session.get(User, payload["sub"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+def require_role(*allowed_roles: str):
+    def _role_checker(user: User = Depends(get_current_user)) -> User:
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Forbidden: role '{user.role}' does not have permission (requires one of {allowed_roles})",
+            )
+        return user
+
+    return _role_checker
