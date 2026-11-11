@@ -1,4 +1,5 @@
 """Application settings, loaded from environment variables or a .env file."""
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
     paypal_client_secret: str = ""
     paypal_webhook_id: str = ""
     paypal_base_url: str = "https://api-m.sandbox.paypal.com"
-    app_base_url: str = "http://localhost:8000"
+    app_base_url: str = os.getenv("RENDER_EXTERNAL_URL") or "http://localhost:8000"
 
     # LLM (free tier). LLM_PROVIDER=gemini calls the Google Gemini API.
     llm_provider: str = "gemini"  # gemini | offline (used only by unit tests)
