@@ -223,11 +223,41 @@ def test_retention_holdback_released_only_after_all_regular_milestones_settled(c
         ).json()
         client.post(f"/confirm/{inv['token']}", json={"confirmed": True, "reported_amount": amt})
         client.post(f"/milestones/{mid}/decision")
-        assert client.post(f"/payouts/{mid}/execute", json={}).status_code == 200
+        p_exec = client.post(f"/payouts/{mid}/execute", json={}).json()
+        # Holdback release is blocked while milestone is merely PAYOUT_SENT (not settled)
+        assert client.post(f"/projects/{pid}/release-holdback", json={}).status_code == 409
+        # Webhook confirms settlement
+        client.post(
+            "/webhooks/paypal",
+            json={
+                "event_type": "PAYMENT.PAYOUTSBATCH.SUCCESS",
+                "resource": {"payout_batch_id": p_exec["paypal_batch_id"]},
+            },
+        )
 
     # Release the 10% ($100) holdback
     hb = client.post(f"/projects/{pid}/release-holdback", json={"actor": "auditor"}).json()
     assert hb["amount"] == 100.0
+    # Project is not prematurely marked COMPLETED while holdback payout is pending settlement
+    proj_pending = client.get(f"/projects/{pid}").json()
+    assert proj_pending["project"]["status"] == "FUNDED"
+
+    # Webhook settles the final holdback payout
+    client.post(
+        "/webhooks/paypal",
+        json={
+            "event_type": "PAYMENT.PAYOUTSBATCH.SUCCESS",
+            "resource": {"payout_batch_id": hb["paypal_batch_id"]},
+        },
+    )
+
     proj = client.get(f"/projects/{pid}").json()
     assert proj["project"]["status"] == "COMPLETED"
     assert proj["released"] == 1000.0
+
+    # Double-entry ledger verification
+    verify = client.get(f"/ledger/journal/verify?project_id={pid}").json()
+    assert verify["is_balanced"] is True
+    assert verify["total_debits"] == verify["total_credits"] == 2000.0
+    assert verify["accounts"]["Assets:PayPal_Escrow_Holdings"] == 0.0
+    assert verify["accounts"]["Liabilities:Grantee_Escrow_Allocation"] == 0.0

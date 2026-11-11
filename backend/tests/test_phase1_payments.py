@@ -101,3 +101,47 @@ def test_audit_log_records_actions(client, seeded):
     fund(client, p["project"]["id"])
     actions = {a["action"] for a in client.get("/audit").json()}
     assert {"project_created", "funding_order_created", "funding_captured"} <= actions
+
+
+def test_double_entry_ledger_and_webhook_idempotency(client, seeded):
+    donor, ngo = seeded
+    p = make_project(client, donor, ngo)
+    pid = p["project"]["id"]
+    fund(client, pid)
+
+    # Initial double-entry deposit verify
+    v1 = client.get(f"/ledger/journal/verify?project_id={pid}").json()
+    assert v1["is_balanced"] is True
+    assert v1["total_debits"] == 1000.0
+    assert v1["total_credits"] == 1000.0
+    assert v1["accounts"]["Assets:PayPal_Escrow_Holdings"] == 1000.0
+    assert v1["accounts"]["Liabilities:Grantee_Escrow_Allocation"] == -1000.0
+
+    m1 = p["milestones"][0]["id"]
+    client.post(f"/milestones/{m1}/approve", json={})
+    payout = client.post(f"/payouts/{m1}/execute", json={}).json()
+
+    # Deliver webhook with explicit event_id
+    ev = {
+        "id": "WH-TEST-EV-001",
+        "event_type": "PAYMENT.PAYOUTS-ITEM.SUCCEEDED",
+        "resource": {
+            "payout_item_id": payout.get("paypal_item_id"),
+            "sender_item_id": payout["sender_batch_id"],
+            "payout_batch_id": payout["paypal_batch_id"],
+        },
+    }
+    r1 = client.post("/webhooks/paypal", json=ev).json()
+    assert r1["changed"] is True
+
+    # Re-delivering exact duplicate webhook should be cleanly ignored (idempotency)
+    r2 = client.post("/webhooks/paypal", json=ev).json()
+    assert r2["changed"] is False
+
+    # Check balanced journal
+    v2 = client.get(f"/ledger/journal/verify?project_id={pid}").json()
+    assert v2["is_balanced"] is True
+    assert v2["total_debits"] == 1100.0
+    assert v2["total_credits"] == 1100.0
+    assert v2["accounts"]["Assets:PayPal_Escrow_Holdings"] == 900.0
+    assert v2["accounts"]["Liabilities:Grantee_Escrow_Allocation"] == -900.0

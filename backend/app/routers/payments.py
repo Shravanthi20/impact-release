@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from app.db.models import AuditLog, Funding, Milestone, Payout, Project, ReleaseDecision, User
+from app.db.models import AuditLog, Funding, JournalEntry, Milestone, Payout, Project, ReleaseDecision, User
 from app.db.session import get_session
 from app.services import release_service as rs
 from app.services.paypal_client import PayPalClient, PayPalError, get_paypal
@@ -207,11 +207,27 @@ async def paypal_webhook(request: Request, session: Session = Depends(get_sessio
     body = await request.json()
     if not pp.verify_webhook(dict(request.headers), body):
         raise HTTPException(400, "invalid webhook signature")
-    changed = rs.apply_payout_event(session, body.get("event_type", ""), body.get("resource", {}))
+    event_id = body.get("id")
+    changed = rs.apply_payout_event(
+        session, body.get("event_type", ""), body.get("resource", {}), event_id=event_id
+    )
     return {"ok": True, "changed": changed}
 
 
 # ---------- ledger & audit ----------
+@router.get("/ledger/journal")
+def double_entry_journal(project_id: int | None = None, session: Session = Depends(get_session)):
+    """Balanced double-entry journal ledger displaying immutable debit and credit pairs."""
+    query = select(JournalEntry)
+    if project_id:
+        query = query.where(JournalEntry.project_id == project_id)
+    return session.exec(query.order_by(JournalEntry.id.desc())).all()
+
+
+@router.get("/ledger/journal/verify")
+def verify_journal(project_id: int | None = None, session: Session = Depends(get_session)):
+    """Audit verification endpoint confirming total debits equal total credits."""
+    return rs.verify_double_entry_balance(session, project_id=project_id)
 @router.get("/ledger/public")
 def public_ledger(session: Session = Depends(get_session)):
     """Anonymised: no emails or names."""

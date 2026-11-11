@@ -64,10 +64,25 @@ class Payout(SQLModel, table=True):
     milestone_id: int = Field(foreign_key="milestone.id")
     sender_batch_id: str = Field(index=True, unique=True)
     paypal_batch_id: Optional[str] = None
+    paypal_item_id: Optional[str] = None
     amount: float
     currency: str = "USD"
     receiver_email: str
-    status: str = "PENDING"  # PENDING | SUCCESS | FAILED | UNCLAIMED
+    status: str = "PENDING"  # PENDING | PROCESSING | SUCCESS | FAILED | UNCLAIMED | HELD | REFUNDED
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class JournalEntry(SQLModel, table=True):
+    """Immutable double-entry general ledger ensuring every debit has a balanced credit."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(foreign_key="project.id", index=True)
+    milestone_id: Optional[int] = Field(default=None, foreign_key="milestone.id")
+    entry_type: str = Field(index=True)  # ESCROW_DEPOSIT | TRANCHE_DISBURSEMENT | HOLDBACK_RELEASE | REFUND
+    debit_account: str
+    credit_account: str
+    amount: float
+    currency: str = "USD"
+    reference_id: str = Field(index=True)  # Order, Capture, or Payout batch/item ID
     created_at: datetime = Field(default_factory=utcnow)
 
 

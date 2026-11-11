@@ -49,15 +49,28 @@ class StubPayPal:
         if not order:
             raise PayPalError("unknown order")
         order["status"] = "COMPLETED"
-        return {"id": order_id, "status": "COMPLETED",
-                "capture_id": "STUB-CAP-" + uuid.uuid4().hex[:10].upper()}
+        cap_id = "STUB-CAP-" + uuid.uuid4().hex[:10].upper()
+        return {
+            "id": order_id,
+            "status": "COMPLETED",
+            "capture_id": cap_id,
+            "capture_status": "COMPLETED",
+            "amount": float(order["amount"]),
+            "currency": order["currency"],
+        }
 
     def create_payout(self, sender_batch_id, receiver_email, amount, currency, note):
         # Idempotent on sender_batch_id, like PayPal.
         if sender_batch_id in self.payouts:
             return self.payouts[sender_batch_id]
-        res = {"batch_id": "STUB-BATCH-" + uuid.uuid4().hex[:10].upper(),
-               "batch_status": "PENDING", "sender_batch_id": sender_batch_id}
+        bid = "STUB-BATCH-" + uuid.uuid4().hex[:10].upper()
+        item_id = "STUB-ITEM-" + uuid.uuid4().hex[:10].upper()
+        res = {
+            "batch_id": bid,
+            "batch_status": "PENDING",
+            "sender_batch_id": sender_batch_id,
+            "payout_item_id": item_id,
+        }
         self.payouts[sender_batch_id] = res
         return res
 
@@ -107,8 +120,15 @@ class SandboxPayPal:
 
     def capture_order(self, order_id):
         data = self._post(f"/v2/checkout/orders/{order_id}/capture", {}, request_id=f"cap-{order_id}")
-        cap = data["purchase_units"][0]["payments"]["captures"][0]["id"]
-        return {"id": order_id, "status": data["status"], "capture_id": cap}
+        cap = data["purchase_units"][0]["payments"]["captures"][0]
+        return {
+            "id": order_id,
+            "status": data["status"],
+            "capture_id": cap["id"],
+            "capture_status": cap.get("status", "COMPLETED"),
+            "amount": float(cap.get("amount", {}).get("value", 0.0)),
+            "currency": cap.get("amount", {}).get("currency_code", "USD"),
+        }
 
     def create_payout(self, sender_batch_id, receiver_email, amount, currency, note):
         data = self._post("/v1/payments/payouts", {
@@ -117,10 +137,17 @@ class SandboxPayPal:
             "items": [{"recipient_type": "EMAIL", "receiver": receiver_email, "note": note,
                        "sender_item_id": sender_batch_id,
                        "amount": {"value": f"{amount:.2f}", "currency": currency}}],
-        })
-        h = data["batch_header"]
-        return {"batch_id": h["payout_batch_id"], "batch_status": h["batch_status"],
-                "sender_batch_id": sender_batch_id}
+        }, request_id=f"payout-{sender_batch_id}")
+        h = data.get("batch_header", {})
+        item_id = None
+        if data.get("items"):
+            item_id = data["items"][0].get("payout_item_id")
+        return {
+            "batch_id": h.get("payout_batch_id"),
+            "batch_status": h.get("batch_status", "PENDING"),
+            "sender_batch_id": sender_batch_id,
+            "payout_item_id": item_id,
+        }
 
     def verify_webhook(self, headers, body):
         h = {k.lower(): v for k, v in headers.items()}
