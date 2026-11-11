@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from app.agents.investigation_workflow import run_investigation_workflow
 from app.config import settings
 from app.db.models import Analysis, Confirmation, Dispute, Milestone, Project, Submission, User
 from app.services.release_service import funded_amount, released_amount
@@ -102,7 +103,27 @@ def evaluate_milestone_rules(session: Session, milestone: Milestone) -> RuleEval
         detail="No open disputes" if no_disputes else f"{len(open_disputes)} open dispute(s)",
     )
 
-    # 6. Trust-tier automatic approval threshold
+    # 6. Outcome & Functionality Investigation Workflow
+    reqs = json.loads(milestone.evidence_requirements_json or "[]")
+    inv_res = run_investigation_workflow(
+        milestone_title=milestone.title,
+        tranche_amount=milestone.tranche_amount,
+        evidence_requirements=reqs,
+        verifier_signals=v or {},
+        skeptic_signals=s or {},
+        confirmations_summary={
+            "matched_vendor": len(matched_vw) >= 1,
+            "matched_beneficiaries": len(matched_ben),
+            "contradictions": len(contradictions),
+        },
+    )
+    outcome_ok = (not inv_res.requires_investigation) or (inv_res.outcome_status == "VERIFIED_FUNCTIONAL")
+    checks["outcome_functionality_established"] = RuleCheck(
+        passed=outcome_ok,
+        detail=inv_res.outcome_explanation,
+    )
+
+    # 7. Trust-tier automatic approval threshold
     tier = payee.trust_tier if payee else 0
     limit = settings.human_approval_threshold * (1.0 + 0.5 * max(0, tier))
     within_limit = milestone.tranche_amount <= limit + 1e-9
@@ -114,9 +135,9 @@ def evaluate_milestone_rules(session: Session, milestone: Milestone) -> RuleEval
     all_passed = all(c.passed for c in checks.values())
     if all_passed:
         outcome = "release"
-    elif not no_disputes or contradictions or (sub and not skeptic_ok):
+    elif not no_disputes or contradictions or (sub and not skeptic_ok) or inv_res.outcome_status == "SUSPICIOUS_CONTRADICTION":
         outcome = "review"
-    elif not sub or not code_ok or not conf_ok:
+    elif not sub or not code_ok or not conf_ok or not outcome_ok:
         outcome = "needs_more_evidence"
     elif not within_limit:
         outcome = "review"

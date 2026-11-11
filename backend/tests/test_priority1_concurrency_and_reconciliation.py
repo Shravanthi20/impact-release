@@ -215,3 +215,56 @@ def test_reconciliation_service_auto_recovers_missing_webhook(client, seeded):
     # Verify that reconciliation settled the milestone without requiring a webhook!
     updated_proj = client.get(f"/projects/{pid}").json()
     assert updated_proj["milestones"][0]["status"] == "SETTLED"
+
+
+def test_investigation_workflow_outcome_and_contradiction_handling(client, seeded):
+    from app.agents.investigation_workflow import run_investigation_workflow
+
+    # Scenario A: Contradiction / Fraud detected
+    res_a = run_investigation_workflow(
+        milestone_title="Solar Pump Installation",
+        tranche_amount=1000.0,
+        evidence_requirements=["Operational solar pump", "Beneficiary signoff"],
+        verifier_signals={"challenge_code_visible": False, "extracted_text": "Random pump photo"},
+        skeptic_signals={"fraud_risk": 0.65, "concerns": [{"code": "EXACT_FILE_REUSE", "detail": "Reused photo"}]},
+        confirmations_summary={"matched_vendor": False, "matched_beneficiaries": 0, "contradictions": 1},
+    )
+    assert res_a.outcome_status == "SUSPICIOUS_CONTRADICTION"
+    assert res_a.requires_investigation is True
+    assert any(a.action_type == "ESCALATE_HUMAN_AUDIT" for a in res_a.investigation_actions)
+
+    # Scenario B: Amount mismatch triggers itemization
+    res_b = run_investigation_workflow(
+        milestone_title="Field Supplies",
+        tranche_amount=800.0,
+        evidence_requirements=["Receipt"],
+        verifier_signals={"challenge_code_visible": True, "extracted_text": "Receipt total: $400", "claimed_amount_on_receipt": 400.0},
+        skeptic_signals={"fraud_risk": 0.10, "concerns": []},
+        confirmations_summary={"matched_vendor": True, "matched_beneficiaries": 0, "contradictions": 0},
+    )
+    assert res_b.requires_investigation is True
+    assert any(a.action_type == "REQUEST_VENDOR_ITEMIZATION" for a in res_b.investigation_actions)
+
+
+def test_project_forensic_audit_timeline(client, seeded):
+    donor, ngo = seeded
+    p = client.post("/projects", json={
+        "donor_id": donor["id"], "org_id": ngo["id"],
+        "intent_text": "Audit timeline verification",
+        "total_amount": 500.0, "currency": "USD", "holdback_pct": 10.0,
+        "milestones": [
+            {"title": "M1", "tranche_amount": 400.0, "payee_user_id": ngo["id"]},
+        ],
+    }).json()
+    pid = p["project"]["id"]
+    client.post(f"/projects/{pid}/fund")
+    client.post(f"/projects/{pid}/fund/capture")
+
+    # Fetch audit timeline
+    tl = client.get(f"/audit/timeline/{pid}").json()
+    assert tl["project_id"] == pid
+    trail = tl["forensic_audit_trail"]
+    assert trail["1_who_initiated_funding"]["donor_id"] == donor["id"]
+    assert trail["2_how_much_captured"]["captured_amount"] == 500.0
+    assert len(trail["3_milestones_and_evidence"]) == 1
+    assert len(trail["4_double_entry_ledger_journal"]) >= 1

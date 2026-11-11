@@ -439,3 +439,112 @@ def audit_log(session: Session = Depends(get_session)):
     projects = {p.id: p for p in session.exec(select(Project)).all() if p.id is not None}
     milestones = {m.id: m for m in session.exec(select(Milestone)).all() if m.id is not None}
     return [_humanize_audit(r, users, projects, milestones) for r in rows]
+
+
+@router.get("/audit/timeline/{project_id}")
+def project_audit_timeline(project_id: int, session: Session = Depends(get_session)):
+    """Comprehensive observability timeline answering the 7 forensic audit questions."""
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "project not found")
+
+    donor = session.get(User, project.donor_id)
+    funding_records = session.exec(select(Funding).where(Funding.project_id == project_id)).all()
+    milestones = session.exec(select(Milestone).where(Milestone.project_id == project_id).order_by(Milestone.order_no)).all()
+    journal_entries = session.exec(select(JournalEntry).where(JournalEntry.project_id == project_id).order_by(JournalEntry.id)).all()
+
+    q1_funding_initiator = {
+        "donor_id": donor.id if donor else project.donor_id,
+        "donor_name": donor.name if donor else "Unknown Donor",
+        "donor_email": donor.email if donor else "",
+        "created_at": project.created_at,
+    }
+
+    captured_funding = [f for f in funding_records if f.status == "CAPTURED"]
+    q2_funding_captured = {
+        "total_contract_amount": project.total_amount,
+        "currency": project.currency,
+        "captured_amount": sum(f.amount for f in captured_funding),
+        "holdback_amount": round(project.total_amount * (project.holdback_pct / 100.0), 2),
+        "orders": [
+            {"order_id": f.paypal_order_id, "capture_id": f.paypal_capture_id, "amount": f.amount, "status": f.status}
+            for f in funding_records
+        ],
+    }
+
+    from app.db.models import Analysis, Submission
+    milestone_timelines = []
+    for m in milestones:
+        subs = session.exec(select(Submission).where(Submission.milestone_id == m.id).order_by(Submission.id)).all()
+        submission_reports = []
+        for s in subs:
+            analyses = session.exec(select(Analysis).where(Analysis.submission_id == s.id)).all()
+            submission_reports.append({
+                "submission_id": s.id,
+                "captured_at": s.captured_at,
+                "capture_source": s.capture_source,
+                "analyses": [
+                    {"agent": a.agent, "signals": json.loads(a.signals_json or "{}"), "created_at": a.created_at}
+                    for a in analyses
+                ],
+            })
+
+        decisions = session.exec(select(ReleaseDecision).where(ReleaseDecision.milestone_id == m.id).order_by(ReleaseDecision.id)).all()
+        payouts = session.exec(select(Payout).where(Payout.milestone_id == m.id).order_by(Payout.id)).all()
+
+        milestone_timelines.append({
+            "milestone_id": m.id,
+            "order_no": m.order_no,
+            "title": m.title,
+            "tranche_amount": m.tranche_amount,
+            "status": m.status,
+            "is_holdback": m.is_holdback,
+            "submissions": submission_reports,
+            "decisions": [
+                {
+                    "decision": d.decision,
+                    "confidence": d.confidence,
+                    "rules_passed": d.rules_passed,
+                    "explanation": d.explanation,
+                    "decided_by": d.decided_by,
+                    "created_at": d.created_at,
+                }
+                for d in decisions
+            ],
+            "payouts": [
+                {
+                    "payout_id": p.id,
+                    "sender_batch_id": p.sender_batch_id,
+                    "paypal_batch_id": p.paypal_batch_id,
+                    "amount": p.amount,
+                    "status": p.status,
+                    "receiver_email": p.receiver_email,
+                    "created_at": p.created_at,
+                }
+                for p in payouts
+            ],
+        })
+
+    return {
+        "project_id": project.id,
+        "status": project.status,
+        "forensic_audit_trail": {
+            "1_who_initiated_funding": q1_funding_initiator,
+            "2_how_much_captured": q2_funding_captured,
+            "3_milestones_and_evidence": milestone_timelines,
+            "4_double_entry_ledger_journal": [
+                {
+                    "id": j.id,
+                    "type": j.entry_type,
+                    "debit": j.debit_account,
+                    "credit": j.credit_account,
+                    "amount": j.amount,
+                    "currency": j.currency,
+                    "reference": j.reference_id,
+                    "is_reversal": j.is_reversal,
+                    "created_at": j.created_at,
+                }
+                for j in journal_entries
+            ],
+        },
+    }
