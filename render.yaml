@@ -9,9 +9,11 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.8
       - key: DATABASE_URL
-        value: sqlite:///./impactrelease.db
+        fromDatabase:
+          name: impactrelease-db
+          property: connectionString
       - key: PAYPAL_MODE
-        value: stub
+        value: sandbox
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
@@ -28,3 +30,9 @@ services:
         value: "true"
       - key: SIMILARITY_BACKEND
         value: local
+
+databases:
+  - name: impactrelease-db
+    databaseName: impactrelease
+    user: impactrelease
+    plan: free
