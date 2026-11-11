@@ -192,6 +192,8 @@ def execute_payout(milestone_id: int, body: ApproveIn, session: Session = Depend
     milestone = session.get(Milestone, milestone_id)
     if not milestone:
         raise HTTPException(404, "milestone not found")
+    if body.actor.lower() in ("ngo", "payee") or body.actor.lower() == str(milestone.payee_user_id):
+        raise HTTPException(403, "grantees/payees cannot approve or execute their own milestone payouts")
     try:
         return rs.release_milestone(session, pp, milestone, body.actor, body.human_approved)
     except rs.ReleaseError as e:
@@ -228,6 +230,19 @@ def double_entry_journal(project_id: int | None = None, session: Session = Depen
 def verify_journal(project_id: int | None = None, session: Session = Depends(get_session)):
     """Audit verification endpoint confirming total debits equal total credits."""
     return rs.verify_double_entry_balance(session, project_id=project_id)
+
+
+@router.post("/reconciliation/run")
+def run_reconciliation(session: Session = Depends(get_session), pp: PayPalClient = Depends(get_paypal)):
+    """Run automated reconciliation between PostgreSQL database and PayPal API."""
+    return rs.reconcile_with_paypal(session, pp)
+
+
+@router.get("/reconciliation/discrepancies")
+def get_discrepancies(session: Session = Depends(get_session)):
+    """Exception queue displaying financial desyncs, stuck processing batches, and orphan payouts."""
+    from app.db.models import FinancialDiscrepancy
+    return session.exec(select(FinancialDiscrepancy).order_by(FinancialDiscrepancy.id.desc())).all()
 @router.get("/ledger/public")
 def public_ledger(session: Session = Depends(get_session)):
     """Anonymised: no emails or names."""

@@ -28,6 +28,7 @@ class PayPalClient(Protocol):
     def create_payout(
         self, sender_batch_id: str, receiver_email: str, amount: float, currency: str, note: str
     ) -> dict[str, Any]: ...
+    def get_payout(self, payout_batch_id: str) -> dict[str, Any]: ...
     def verify_webhook(self, headers: dict[str, str], body: dict[str, Any]) -> bool: ...
 
 
@@ -73,6 +74,12 @@ class StubPayPal:
         }
         self.payouts[sender_batch_id] = res
         return res
+
+    def get_payout(self, payout_batch_id: str) -> dict[str, Any]:
+        for p in self.payouts.values():
+            if p.get("batch_id") == payout_batch_id:
+                return p
+        raise PayPalError(f"payout batch {payout_batch_id} not found")
 
     def verify_webhook(self, headers, body):
         return True
@@ -147,6 +154,21 @@ class SandboxPayPal:
             "batch_status": h.get("batch_status", "PENDING"),
             "sender_batch_id": sender_batch_id,
             "payout_item_id": item_id,
+        }
+
+    def get_payout(self, payout_batch_id: str) -> dict[str, Any]:
+        headers = {**self._auth(), "Content-Type": "application/json"}
+        with self._client() as c:
+            r = c.get(f"/v1/payments/payouts/{payout_batch_id}", headers=headers)
+        if r.status_code >= 400:
+            raise PayPalError(f"get_payout failed: {r.status_code} {r.text}")
+        data = r.json()
+        h = data.get("batch_header", {})
+        return {
+            "batch_id": h.get("payout_batch_id"),
+            "batch_status": h.get("batch_status"),
+            "sender_batch_id": h.get("sender_batch_header", {}).get("sender_batch_id"),
+            "items": data.get("items", []),
         }
 
     def verify_webhook(self, headers, body):

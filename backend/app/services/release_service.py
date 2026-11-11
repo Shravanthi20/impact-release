@@ -4,6 +4,7 @@
 only influence the milestone status that this service checks (guardrail from the build plan).
 """
 import json
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -13,6 +14,7 @@ from app.config import settings
 from app.db.models import (
     AuditLog,
     Dispute,
+    FinancialDiscrepancy,
     Funding,
     JournalEntry,
     Milestone,
@@ -20,9 +22,60 @@ from app.db.models import (
     Project,
     ReleaseDecision,
     User,
+    WebhookEventRecord,
     utcnow,
 )
 from app.services.paypal_client import PayPalClient
+
+_PROJECT_LOCKS: dict[int, threading.Lock] = {}
+_LOCK_PROTECTOR = threading.Lock()
+
+
+def get_project_lock(project_id: int) -> threading.Lock:
+    with _LOCK_PROTECTOR:
+        if project_id not in _PROJECT_LOCKS:
+            _PROJECT_LOCKS[project_id] = threading.Lock()
+        return _PROJECT_LOCKS[project_id]
+
+
+# Payout Finite State Machine
+VALID_PAYOUT_TRANSITIONS: dict[str, set[str]] = {
+    "PENDING": {"PROCESSING", "SUCCESS", "FAILED", "UNCLAIMED", "HELD", "CANCELED"},
+    "PROCESSING": {"SUCCESS", "FAILED", "UNCLAIMED", "HELD", "CANCELED"},
+    "UNCLAIMED": {"SUCCESS", "FAILED", "CANCELED"},
+    "HELD": {"SUCCESS", "FAILED", "CANCELED"},
+    "SUCCESS": {"REFUNDED"},  # Once settled, only refunds are accepted
+    "FAILED": set(),          # Terminal
+    "REFUNDED": set(),        # Terminal
+    "CANCELED": set(),        # Terminal
+}
+
+
+def record_financial_discrepancy(
+    session: Session,
+    entity_type: str,
+    entity_id: int,
+    external_ref: str,
+    issue_type: str,
+    severity: str,
+    db_state: str,
+    paypal_state: str,
+    details: dict[str, Any] | None = None,
+) -> FinancialDiscrepancy:
+    row = FinancialDiscrepancy(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        external_ref=external_ref,
+        issue_type=issue_type,
+        severity=severity,
+        db_state=db_state,
+        paypal_state=paypal_state,
+        details_json=json.dumps(details or {}, default=str),
+        status="OPEN",
+    )
+    session.add(row)
+    session.flush()
+    return row
 
 
 def _aware(dt: datetime) -> datetime:
@@ -171,56 +224,58 @@ def capture_funding(session: Session, pp: PayPalClient, funding: Funding) -> Fun
 
 def release_milestone(session: Session, pp: PayPalClient, milestone: Milestone,
                       actor: str, human_approved: bool = False) -> Payout:
-    """Run hard rules, then create the payout. Idempotent per milestone with crash recovery."""
-    existing = session.exec(select(Payout).where(
-        Payout.milestone_id == milestone.id,
-        Payout.status.in_(("PENDING", "PROCESSING", "SUCCESS", "SETTLED"))
-    )).first()
-    if existing:
-        return existing
+    """Run hard rules, then create the payout.
+    Protected by concurrency locks, database row locking, and balance invariants.
+    """
+    project_id = milestone.project_id
+    project_lock = get_project_lock(project_id)
 
-    project = session.get(Project, milestone.project_id)
-    if project.status != "FUNDED":
-        raise ReleaseError("project is not funded")
+    with project_lock:
+        stmt = select(Project).where(Project.id == project_id)
+        if session.bind and session.bind.dialect.name != "sqlite":
+            stmt = stmt.with_for_update()
+        project = session.exec(stmt).first()
+        if not project or project.status != "FUNDED":
+            raise ReleaseError(f"project is not funded (status: {project.status if project else 'None'})")
 
-    open_disputes = session.exec(
-        select(Dispute).where(Dispute.milestone_id == milestone.id, Dispute.status == "OPEN")
-    ).all()
-    if open_disputes:
-        raise ReleaseError("milestone has an open dispute")
+        existing = session.exec(select(Payout).where(
+            Payout.milestone_id == milestone.id,
+            Payout.status.in_(("PENDING", "PROCESSING", "SUCCESS", "SETTLED"))
+        )).first()
+        if existing:
+            return existing
 
-    if milestone.status == "CHALLENGE_WINDOW":
-        if milestone.challenge_ends_at and utcnow() < _aware(milestone.challenge_ends_at):
-            raise ReleaseError("challenge window is still active")
-        milestone.status = "APPROVED_FOR_RELEASE"
+        open_disputes = session.exec(
+            select(Dispute).where(Dispute.milestone_id == milestone.id, Dispute.status == "OPEN")
+        ).all()
+        if open_disputes:
+            raise ReleaseError("milestone has an open dispute")
 
-    if milestone.status != "APPROVED_FOR_RELEASE":
-        raise ReleaseError("milestone is not approved for release")
-    if milestone.tranche_amount > settings.human_approval_threshold and not human_approved:
-        raise ReleaseError("amount above threshold requires human approval")
-    available = funded_amount(session, project.id) - released_amount(session, project.id)
-    if milestone.tranche_amount > available + 1e-9:
-        raise ReleaseError("insufficient funded balance")
-    payee = session.get(User, milestone.payee_user_id)
-    if not payee or not payee.paypal_email:
-        raise ReleaseError("payee has no PayPal email")
+        if milestone.status == "CHALLENGE_WINDOW":
+            if milestone.challenge_ends_at and utcnow() < _aware(milestone.challenge_ends_at):
+                raise ReleaseError("challenge window is still active")
+            milestone.status = "APPROVED_FOR_RELEASE"
 
-    attempts = len(session.exec(select(Payout).where(Payout.milestone_id == milestone.id)).all())
-    batch_id = f"milestone-{milestone.id}-{attempts + 1}"
+        if milestone.status != "APPROVED_FOR_RELEASE":
+            raise ReleaseError("milestone is not approved for release")
+        if milestone.tranche_amount > settings.human_approval_threshold and not human_approved:
+            raise ReleaseError("amount above threshold requires human approval")
 
-    # Payout recovery: pre-allocate Payout record with PENDING status
-    payout = Payout(
-        milestone_id=milestone.id,
-        sender_batch_id=batch_id,
-        amount=milestone.tranche_amount,
-        currency=project.currency,
-        receiver_email=payee.paypal_email,
-        status="PENDING",
-    )
-    session.add(payout)
-    session.flush()
+        available = funded_amount(session, project.id) - released_amount(session, project.id)
+        if not milestone.is_holdback and project.holdback_pct > 0:
+            holdback_amount = round(project.total_amount * (project.holdback_pct / 100.0), 2)
+            available = max(0.0, round(available - holdback_amount, 2))
 
-    try:
+        if milestone.tranche_amount > available + 1e-9:
+            raise ReleaseError(f"insufficient funded balance: requested {milestone.tranche_amount}, available {available}")
+
+        payee = session.get(User, milestone.payee_user_id)
+        if not payee or not payee.paypal_email:
+            raise ReleaseError("payee has no PayPal email")
+
+        attempts = len(session.exec(select(Payout).where(Payout.milestone_id == milestone.id)).all())
+        batch_id = f"milestone-{milestone.id}-{attempts + 1}"
+
         res = pp.create_payout(
             batch_id,
             payee.paypal_email,
@@ -228,20 +283,24 @@ def release_milestone(session: Session, pp: PayPalClient, milestone: Milestone,
             project.currency,
             f"ImpactRelease: {milestone.title}",
         )
-        payout.paypal_batch_id = res.get("batch_id")
-        payout.paypal_item_id = res.get("payout_item_id")
-        payout.status = res.get("batch_status", "PENDING")
+        payout = Payout(
+            milestone_id=milestone.id,
+            sender_batch_id=batch_id,
+            paypal_batch_id=res.get("batch_id"),
+            paypal_item_id=res.get("payout_item_id"),
+            amount=milestone.tranche_amount,
+            currency=project.currency,
+            receiver_email=payee.paypal_email,
+            status=res.get("batch_status", "PENDING"),
+        )
         milestone.status = "PAYOUT_SENT"
         session.add_all([payout, milestone])
         audit(session, actor, "payout_created", "milestone", milestone.id,
               amount=milestone.tranche_amount, batch_id=res.get("batch_id"))
         session.commit()
-    except Exception as e:
-        session.rollback()
-        raise e
 
-    session.refresh(payout)
-    return payout
+        session.refresh(payout)
+        return payout
 
 
 _PAYOUT_ITEM_EVENTS = {
@@ -265,23 +324,25 @@ _ALL_PAYOUT_EVENTS = {**_PAYOUT_ITEM_EVENTS, **_PAYOUT_BATCH_EVENTS}
 
 
 def apply_payout_event(session: Session, event_type: str, resource: dict, event_id: str | None = None) -> bool:
-    """Update payout/milestone from a PayPal webhook with item/batch segregation and double-entry reconciliation."""
+    """Update payout/milestone from a PayPal webhook with item/batch segregation, state machine checks,
+    and double-entry reconciliation."""
     mapping = _ALL_PAYOUT_EVENTS.get(event_type)
     if not mapping:
         return False
     payout_status, milestone_status = mapping
 
-    # Deduplicate webhook events to prevent duplicate processing
+    # Strict Database-level deduplication of webhook events
     if event_id:
-        existing_log = session.exec(
-            select(AuditLog).where(
-                AuditLog.actor == "paypal",
-                AuditLog.action == f"webhook:{event_type}",
-                AuditLog.details_json.contains(f'"event_id": "{event_id}"'),
-            )
+        existing_wh = session.exec(
+            select(WebhookEventRecord).where(WebhookEventRecord.event_id == event_id)
         ).first()
-        if existing_log:
-            return False
+        if existing_wh:
+            return False  # Duplicate webhook delivery rejected idempotently
+        session.add(WebhookEventRecord(
+            event_id=event_id,
+            event_type=event_type,
+            resource_type=str(resource.get("resource_type", "payout")),
+        ))
 
     # Separate batch-level vs item-level resolution
     payout = None
@@ -318,6 +379,23 @@ def apply_payout_event(session: Session, event_type: str, resource: dict, event_
     if not payout or payout.status == payout_status:
         return False
 
+    # Finite State Machine Validation: prevent illegal backward transitions
+    allowed_transitions = VALID_PAYOUT_TRANSITIONS.get(payout.status, set())
+    if payout_status not in allowed_transitions:
+        record_financial_discrepancy(
+            session=session,
+            entity_type="PAYOUT",
+            entity_id=payout.id,
+            external_ref=payout.sender_batch_id,
+            issue_type="STATUS_DESYNC",
+            severity="HIGH",
+            db_state=payout.status,
+            paypal_state=payout_status,
+            details={"event_type": event_type, "message": f"Illegal transition from {payout.status} to {payout_status}"},
+        )
+        session.commit()
+        return False
+
     previous_status = payout.status
     payout.status = payout_status
     milestone = session.get(Milestone, payout.milestone_id)
@@ -329,7 +407,6 @@ def apply_payout_event(session: Session, event_type: str, resource: dict, event_
 
     # Record Balanced Double-Entry Journal on final settlement
     if payout_status == "SUCCESS" and previous_status != "SUCCESS":
-        project = session.get(Project, milestone.project_id)
         record_double_entry(
             session=session,
             project_id=milestone.project_id,
@@ -340,6 +417,20 @@ def apply_payout_event(session: Session, event_type: str, resource: dict, event_
             amount=payout.amount,
             currency=payout.currency,
             reference_id=payout.sender_batch_id,
+        )
+    elif payout_status == "REFUNDED" and previous_status == "SUCCESS":
+        # Compensating Double-Entry Reversal for refunded payout
+        record_double_entry(
+            session=session,
+            project_id=milestone.project_id,
+            milestone_id=milestone.id,
+            entry_type="REVERSAL",
+            debit_account="Assets:PayPal_Escrow_Holdings",
+            credit_account="Liabilities:Grantee_Escrow_Allocation",
+            amount=payout.amount,
+            currency=payout.currency,
+            reference_id=f"refund-{payout.sender_batch_id}",
+            is_reversal=True,
         )
 
     # Transition project to COMPLETED ONLY AFTER PayPal confirms settlement of all milestones AND holdback
@@ -362,6 +453,88 @@ def apply_payout_event(session: Session, event_type: str, resource: dict, event_
           status=payout_status, event_id=event_id)
     session.commit()
     return True
+
+
+def reconcile_with_paypal(session: Session, pp: PayPalClient) -> dict[str, Any]:
+    """Autonomous reconciliation engine: detects desyncs, missing webhooks, and stuck payouts."""
+    discrepancies: list[dict[str, Any]] = []
+    reconciled_count = 0
+    scanned_count = 0
+
+    open_payouts = session.exec(
+        select(Payout).where(Payout.status.in_(("PENDING", "PROCESSING")))
+    ).all()
+
+    for p in open_payouts:
+        scanned_count += 1
+        if not p.paypal_batch_id:
+            continue
+        try:
+            pp_batch = pp.get_payout(p.paypal_batch_id)
+            pp_status = pp_batch.get("batch_status")
+            if pp_status == "SUCCESS" and p.status != "SUCCESS":
+                p.status = "SUCCESS"
+                m = session.get(Milestone, p.milestone_id)
+                if m:
+                    m.status = "SETTLED"
+                    session.add(m)
+                session.add(p)
+                record_double_entry(
+                    session=session,
+                    project_id=m.project_id if m else 0,
+                    milestone_id=m.id if m else None,
+                    entry_type="TRANCHE_DISBURSEMENT",
+                    debit_account="Liabilities:Grantee_Escrow_Allocation",
+                    credit_account="Assets:PayPal_Escrow_Holdings",
+                    amount=p.amount,
+                    currency=p.currency,
+                    reference_id=p.sender_batch_id,
+                )
+                reconciled_count += 1
+            elif pp_status in ("DENIED", "FAILED") and p.status not in ("FAILED", "DENIED"):
+                p.status = "FAILED"
+                m = session.get(Milestone, p.milestone_id)
+                if m:
+                    m.status = "PAYOUT_FAILED"
+                    session.add(m)
+                session.add(p)
+                reconciled_count += 1
+            elif pp_status in ("PENDING", "PROCESSING"):
+                age_minutes = (utcnow() - _aware(p.created_at)).total_seconds() / 60.0
+                if age_minutes > 15:
+                    d = record_financial_discrepancy(
+                        session=session,
+                        entity_type="PAYOUT",
+                        entity_id=p.id,
+                        external_ref=p.paypal_batch_id,
+                        issue_type="STUCK_PROCESSING",
+                        severity="MEDIUM",
+                        db_state=p.status,
+                        paypal_state=pp_status,
+                        details={"age_minutes": round(age_minutes, 1)},
+                    )
+                    discrepancies.append({"id": d.id, "issue_type": d.issue_type, "payout_id": p.id})
+        except Exception as err:
+            d = record_financial_discrepancy(
+                session=session,
+                entity_type="PAYOUT",
+                entity_id=p.id,
+                external_ref=p.paypal_batch_id or p.sender_batch_id,
+                issue_type="ORPHAN_PAYOUT",
+                severity="HIGH",
+                db_state=p.status,
+                paypal_state="UNKNOWN",
+                details={"error": str(err)},
+            )
+            discrepancies.append({"id": d.id, "issue_type": d.issue_type, "payout_id": p.id, "error": str(err)})
+
+    session.commit()
+    return {
+        "scanned_payouts": scanned_count,
+        "reconciled_payouts": reconciled_count,
+        "open_discrepancies": len(discrepancies),
+        "discrepancies": discrepancies,
+    }
 
 
 def evaluate_and_decide_milestone(session: Session, milestone: Milestone) -> dict[str, Any]:

@@ -51,9 +51,9 @@ class Milestone(SQLModel, table=True):
 
 class Funding(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    project_id: int = Field(foreign_key="project.id")
-    paypal_order_id: str
-    paypal_capture_id: Optional[str] = None
+    project_id: int = Field(foreign_key="project.id", index=True)
+    paypal_order_id: str = Field(unique=True, index=True)
+    paypal_capture_id: Optional[str] = Field(default=None, unique=True, index=True)
     amount: float
     status: str = "CREATED"  # CREATED | CAPTURED | FAILED
     created_at: datetime = Field(default_factory=utcnow)
@@ -61,29 +61,59 @@ class Funding(SQLModel, table=True):
 
 class Payout(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    milestone_id: int = Field(foreign_key="milestone.id")
+    milestone_id: int = Field(foreign_key="milestone.id", index=True)
     sender_batch_id: str = Field(index=True, unique=True)
-    paypal_batch_id: Optional[str] = None
-    paypal_item_id: Optional[str] = None
+    paypal_batch_id: Optional[str] = Field(default=None, index=True)
+    paypal_item_id: Optional[str] = Field(default=None, index=True)
     amount: float
     currency: str = "USD"
     receiver_email: str
-    status: str = "PENDING"  # PENDING | PROCESSING | SUCCESS | FAILED | UNCLAIMED | HELD | REFUNDED
+    status: str = "PENDING"  # PENDING | PROCESSING | SUCCESS | FAILED | UNCLAIMED | HELD | REFUNDED | CANCELED
     created_at: datetime = Field(default_factory=utcnow)
 
 
 class JournalEntry(SQLModel, table=True):
-    """Immutable double-entry general ledger ensuring every debit has a balanced credit."""
+    """Immutable double-entry general ledger ensuring every debit has a balanced credit.
+    Strictly append-only: corrections are recorded as compensating reversal entries.
+    """
     id: Optional[int] = Field(default=None, primary_key=True)
     project_id: int = Field(foreign_key="project.id", index=True)
     milestone_id: Optional[int] = Field(default=None, foreign_key="milestone.id")
-    entry_type: str = Field(index=True)  # ESCROW_DEPOSIT | TRANCHE_DISBURSEMENT | HOLDBACK_RELEASE | REFUND
+    entry_type: str = Field(index=True)  # ESCROW_DEPOSIT | TRANCHE_DISBURSEMENT | HOLDBACK_RELEASE | REFUND | REVERSAL
     debit_account: str
     credit_account: str
     amount: float
     currency: str = "USD"
     reference_id: str = Field(index=True)  # Order, Capture, or Payout batch/item ID
+    is_reversal: bool = False
+    reversal_of_id: Optional[int] = Field(default=None, foreign_key="journalentry.id")
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class WebhookEventRecord(SQLModel, table=True):
+    """Guarantees strict deduplication of PayPal webhook events at the database schema level."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    event_id: str = Field(unique=True, index=True)
+    event_type: str = Field(index=True)
+    resource_type: str = ""
+    status: str = "PROCESSED"  # PROCESSED | FAILED | DUPLICATE
+    processed_at: datetime = Field(default_factory=utcnow)
+
+
+class FinancialDiscrepancy(SQLModel, table=True):
+    """Exception queue tracking discrepancies between database state and PayPal API."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    entity_type: str = Field(index=True)  # FUNDING | PAYOUT | LEDGER
+    entity_id: int = Field(index=True)
+    external_ref: str = ""
+    issue_type: str  # STUCK_PROCESSING | UNCLAIMED_EXPIRED | AMOUNT_MISMATCH | STATUS_DESYNC | ORPHAN_PAYOUT
+    severity: str = "HIGH"  # LOW | MEDIUM | HIGH | CRITICAL
+    db_state: str = ""
+    paypal_state: str = ""
+    details_json: str = "{}"
+    status: str = "OPEN"  # OPEN | INVESTIGATING | RESOLVED | WRITTEN_OFF
+    created_at: datetime = Field(default_factory=utcnow)
+    resolved_at: Optional[datetime] = None
 
 
 class AuditLog(SQLModel, table=True):
