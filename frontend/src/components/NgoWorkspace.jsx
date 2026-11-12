@@ -15,6 +15,7 @@ import {
 import { api, formatCurrency, statusBadgeClass } from "../api.js";
 
 export default function NgoWorkspace({
+  currentUser,
   projects = [],
   users = [],
   onRefresh,
@@ -70,8 +71,12 @@ export default function NgoWorkspace({
   }, []);
 
   function getNgoUserId() {
-    const ngo = users.find((u) => u.role === "ngo") || users[0];
-    return ngo?.id || activeMilestone?.payee_user_id || 2;
+    return (
+      activeMilestone?.payee_user_id ||
+      currentUser?.id ||
+      users.find((u) => u.role === "ngo")?.id ||
+      2
+    );
   }
 
   async function loadConfirmations(milestoneId) {

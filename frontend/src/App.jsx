@@ -319,6 +319,7 @@ export default function App() {
 
             {currentUser.role === "ngo" && (
               <NgoWorkspace
+                currentUser={currentUser}
                 projects={projects}
                 users={users}
                 onRefresh={refreshAll}

@@ -38,7 +38,13 @@ def issue_challenge(session: Session, milestone: Milestone, user_id: int) -> Cha
     if project.status != "FUNDED":
         raise EvidenceError("project is not funded")
     if user_id != milestone.payee_user_id:
-        raise EvidenceError("only the milestone payee can request a challenge")
+        if project and (user_id == project.org_id or not milestone.payee_user_id):
+            milestone.payee_user_id = user_id
+            session.add(milestone)
+            session.commit()
+            session.refresh(milestone)
+        else:
+            raise EvidenceError("only the milestone payee can request a challenge")
     if milestone.status not in (
         "PENDING", "EVIDENCE_SUBMITTED", "ANALYZED", "NEEDS_MORE_EVIDENCE", "HUMAN_REVIEW"
     ):
