@@ -43,7 +43,7 @@ class StubPayPal:
         oid = "STUB-ORDER-" + uuid.uuid4().hex[:10].upper()
         self.orders[oid] = {"amount": amount, "currency": currency, "status": "CREATED"}
         return {"id": oid, "status": "CREATED",
-                "approve_url": f"{settings.app_base_url}/stub/approve/{oid}"}
+                "approve_url": f"{settings.effective_app_base_url}/stub/approve/{oid}"}
 
     def capture_order(self, order_id):
         order = self.orders.get(order_id)
@@ -118,8 +118,8 @@ class SandboxPayPal:
             "purchase_units": [{"reference_id": reference,
                                 "amount": {"currency_code": currency, "value": f"{amount:.2f}"}}],
             "payment_source": {"paypal": {"experience_context": {
-                "return_url": f"{settings.app_base_url}/funding/return",
-                "cancel_url": f"{settings.app_base_url}/funding/cancel"}}},
+                "return_url": f"{settings.effective_app_base_url}/funding/return",
+                "cancel_url": f"{settings.effective_app_base_url}/funding/cancel"}}},
         }, request_id=f"order-{reference}")
         approve = next((l["href"] for l in data.get("links", [])
                         if l["rel"] in ("payer-action", "approve")), None)

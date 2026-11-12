@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     paypal_base_url: str = "https://api-m.sandbox.paypal.com"
     app_base_url: str = os.getenv("RENDER_EXTERNAL_URL") or "http://localhost:8000"
 
+    @property
+    def effective_app_base_url(self) -> str:
+        url = self.app_base_url.rstrip("/")
+        # If running in cloud/Render, never send users back to localhost
+        if os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL") or os.getenv("PORT"):
+            render_url = os.getenv("RENDER_EXTERNAL_URL") or "https://impact-release.onrender.com"
+            if "localhost" in url:
+                return render_url.rstrip("/")
+        return url
+
     # LLM (free tier). LLM_PROVIDER=gemini calls the Google Gemini API.
     llm_provider: str = "gemini"  # gemini | offline (used only by unit tests)
     gemini_api_key: str = ""

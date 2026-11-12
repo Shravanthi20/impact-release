@@ -15,7 +15,7 @@ services:
       - key: PAYPAL_MODE
         value: sandbox
       - key: APP_BASE_URL
-        sync: false
+        value: https://impact-release.onrender.com
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
