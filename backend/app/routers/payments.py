@@ -112,6 +112,28 @@ def get_project(project_id: int, session: Session = Depends(get_session)):
             "released": rs.released_amount(session, project_id)}
 
 
+@router.delete("/projects/{project_id}")
+def delete_project(project_id: int, session: Session = Depends(get_session)):
+    """Delete an unfunded or draft grant."""
+    project = session.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "project not found")
+    if project.status == "FUNDED" or rs.funded_amount(session, project_id) > 0:
+        raise HTTPException(400, "Cannot delete an actively funded grant with escrow balance")
+
+    # Clean up associated milestones & funding attempts
+    milestones = session.exec(select(Milestone).where(Milestone.project_id == project_id)).all()
+    for m in milestones:
+        session.delete(m)
+    fundings = session.exec(select(Funding).where(Funding.project_id == project_id)).all()
+    for f in fundings:
+        session.delete(f)
+    session.delete(project)
+    rs.audit(session, "donor", "project_deleted", "project", project_id)
+    session.commit()
+    return {"deleted": True, "project_id": project_id}
+
+
 @router.post("/projects/{project_id}/fund")
 def fund_project(project_id: int, session: Session = Depends(get_session),
                  pp: PayPalClient = Depends(get_paypal)):

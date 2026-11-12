@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Shield,
   Coins,
+  Trash2,
 } from "lucide-react";
 import { api, formatCurrency, statusBadgeClass } from "../api.js";
 
@@ -59,6 +60,19 @@ export default function DonorWorkspace({
       notify(`Could not draft contract: ${err.message}`, "error");
     } finally {
       setLoadingDraft(false);
+    }
+  }
+
+  async function handleDeleteProject(projectId) {
+    if (!window.confirm(`Are you sure you want to delete unfunded Grant #${projectId}?`)) {
+      return;
+    }
+    try {
+      await api(`/projects/${projectId}`, { method: "DELETE" });
+      notify(`Grant #${projectId} deleted successfully.`);
+      await onRefresh();
+    } catch (err) {
+      notify(`Failed to delete grant: ${err.message}`, "error");
     }
   }
 
@@ -269,13 +283,25 @@ export default function DonorWorkspace({
                   </p>
                 </div>
 
-                <button
-                  onClick={() => handleReleaseHoldback(activeProject.project.id)}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-warmgray-900 text-white hover:bg-warmgray-800 shrink-0 transition cursor-pointer"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  Release {activeProject.project.holdback_pct}% Holdback
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {activeProject.project.status === "PROPOSED" && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProject(activeProject.project.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete Draft
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleReleaseHoldback(activeProject.project.id)}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-warmgray-900 text-white hover:bg-warmgray-800 transition cursor-pointer"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    Release {activeProject.project.holdback_pct}% Holdback
+                  </button>
+                </div>
               </div>
 
               {/* Financial progress bar */}
@@ -530,19 +556,29 @@ export default function DonorWorkspace({
                   ))}
                 </div>
 
-                <button
-                  onClick={handleApproveAndFund}
-                  disabled={fundingGrant}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-forest-700 hover:bg-forest-600 text-white font-bold text-sm shadow-sm disabled:opacity-50 transition cursor-pointer"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  {fundingGrant
-                    ? "Escrowing Grant Balance..."
-                    : `Approve Contract & Fund ${formatCurrency(
-                        draft.budget
-                      )}`}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDraft(null)}
+                    disabled={fundingGrant}
+                    className="px-4 py-3 rounded-xl border border-warmgray-300 hover:bg-warmgray-100 text-warmgray-700 font-bold text-xs transition cursor-pointer"
+                  >
+                    Discard Draft
+                  </button>
+                  <button
+                    onClick={handleApproveAndFund}
+                    disabled={fundingGrant}
+                    className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-forest-700 hover:bg-forest-600 text-white font-bold text-sm shadow-sm disabled:opacity-50 transition cursor-pointer"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    {fundingGrant
+                      ? "Escrowing Grant Balance..."
+                      : `Approve Contract & Fund ${formatCurrency(
+                          draft.budget
+                        )}`}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
