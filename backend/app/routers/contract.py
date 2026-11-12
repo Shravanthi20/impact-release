@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.agents.contract_agent import ContractProposal, propose_contract
+from app.agents.llm import LLMError
 
 router = APIRouter()
 
@@ -17,4 +18,9 @@ class IntentIn(BaseModel):
 def draft_from_intent(body: IntentIn):
     """Contract agent: returns a DRAFT only. Nothing is saved or funded until the donor edits
     and approves it by calling POST /projects."""
-    return propose_contract(body.intent_text, body.budget, body.currency, body.holdback_pct)
+    try:
+        return propose_contract(body.intent_text, body.budget, body.currency, body.holdback_pct)
+    except LLMError as e:
+        raise HTTPException(502, f"Gemini AI agent unavailable: {e}")
+    except Exception as e:
+        raise HTTPException(500, f"Failed to draft contract: {e}")

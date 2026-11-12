@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"  # gemini | offline (used only by unit tests)
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.1-flash-lite"
-    gemini_fallback_models: str = "gemini-2.5-flash,gemini-3.8-flash"
-    strict_gemini_only: bool = True  # when llm_provider=='gemini', never silently use offline fallback
+    gemini_fallback_models: str = "gemini-2.5-flash,gemini-2.0-flash,gemini-1.5-flash"
+    strict_gemini_only: bool = False  # when False, falls back to offline generator if Gemini hits rate limits
 
     # Release guardrails (Phase 5 will enforce more of these).
     human_approval_threshold: float = 500.0

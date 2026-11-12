@@ -29,7 +29,7 @@ services:
       - key: GEMINI_MODEL
         value: gemini-3.1-flash-lite
       - key: STRICT_GEMINI_ONLY
-        value: "true"
+        value: "false"
       - key: SIMILARITY_BACKEND
         value: local
 
