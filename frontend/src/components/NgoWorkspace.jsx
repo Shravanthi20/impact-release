@@ -274,6 +274,27 @@ export default function NgoWorkspace({
     }
   }
 
+  async function handleQuickConfirm(token, contactRef) {
+    if (!activeMilestone) return;
+    try {
+      notify(`Simulating delivery sign-off for ${contactRef}...`);
+      await api(`/confirm/${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          confirmed: true,
+          reported_amount: activeMilestone.tranche_amount,
+          free_text: `Delivery verified and invoices confirmed by ${contactRef}.`,
+        }),
+      });
+      await loadConfirmations(activeMilestone.id);
+      await onRefresh();
+      notify(`✓ Verified delivery sign-off confirmed by ${contactRef}!`);
+    } catch (err) {
+      notify(`Sign-off notice: ${err.message}`, "error");
+    }
+  }
+
   async function handleEvaluateAndPayout() {
     if (!activeMilestone) return;
     try {
@@ -622,23 +643,70 @@ export default function NgoWorkspace({
             <p className="text-xs text-warmgray-500">
               Tranches require independent verification from the supplying vendor or beneficiary.
             </p>
-            {invites.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                {invites.map((inv) => (
+            {invites.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                {invites.map((inv) => {
+                  const isConfirmed = confirmations.some(
+                    (c) => c.kind === inv.kind && c.matched
+                  );
+                  return (
+                    <div
+                      key={inv.token}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs bg-warmgray-50 p-3 rounded-xl border border-warmgray-200"
+                    >
+                      <div>
+                        <span className="font-bold text-warmgray-900 block">
+                          {inv.contact_ref}
+                        </span>
+                        <span className="text-[11px] text-warmgray-500 font-mono">
+                          Token: {inv.token.slice(0, 10)}…
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isConfirmed ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-forest-100 text-forest-800 border border-forest-200">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Signed Off
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleQuickConfirm(inv.token, inv.contact_ref)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-forest-700 hover:bg-forest-600 text-white shadow-sm transition cursor-pointer"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Sign Off Delivery
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : confirmations.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                {confirmations.map((c) => (
                   <div
-                    key={inv.token}
-                    className="flex items-center justify-between text-xs bg-warmgray-50 px-3 py-2 rounded-xl border border-warmgray-200"
+                    key={c.id}
+                    className="flex items-center justify-between text-xs bg-warmgray-50 p-3 rounded-xl border border-warmgray-200"
                   >
-                    <span className="font-semibold text-warmgray-800">
-                      {inv.contact_ref}
+                    <span className="font-bold text-warmgray-900">
+                      {c.contact_ref || (c.kind === "vendor" ? "Primary Field Supplier" : "Community Beneficiary")}
                     </span>
-                    <code className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-warmgray-200 text-terracotta-800">
-                      {inv.token.slice(0, 10)}…
-                    </code>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${
+                        c.matched
+                          ? "bg-forest-100 text-forest-800 border border-forest-200"
+                          : "bg-amber-100 text-amber-900"
+                      }`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      {c.matched ? "Signed Off" : "Pending"}
+                    </span>
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
