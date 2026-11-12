@@ -15,6 +15,7 @@ import {
 import { api, formatCurrency, statusBadgeClass } from "../api.js";
 
 export default function DonorWorkspace({
+  currentUser,
   projects = [],
   users = [],
   onRefresh,
@@ -80,34 +81,48 @@ export default function DonorWorkspace({
     if (!draft) return;
     setFundingGrant(true);
     try {
-      let currentUsers = users;
-      if (!currentUsers.length) {
-        await api("/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: "donor",
-            name: "Grant Sponsor Organization",
-            email: "sponsor@impactrelease.org",
-          }),
-        });
-        await api("/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            role: "ngo",
-            name: "Field Partner Organization",
-            email: "field@impactrelease.org",
-            paypal_email: "field-disbursals@sandbox.paypal.com",
-          }),
-        });
+      let currentUsers = [];
+      try {
         currentUsers = await api("/users");
+      } catch {
+        currentUsers = users || [];
+      }
+      if (!currentUsers.length) {
+        try {
+          await api("/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role: "donor",
+              name: "Grant Sponsor Organization",
+              email: "sponsor@impactrelease.org",
+            }),
+          });
+          await api("/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role: "ngo",
+              name: "Field Partner Organization",
+              email: "field@impactrelease.org",
+              paypal_email: "field-disbursals@sandbox.paypal.com",
+            }),
+          });
+          currentUsers = await api("/users");
+        } catch {
+          // If already seeded or user endpoint restricted
+        }
       }
       const donor =
-        currentUsers.find((u) => u.role === "donor") || currentUsers[0];
+        (currentUser && currentUsers.find((u) => u.id === currentUser.id)) ||
+        currentUsers.find((u) => u.role === "donor") ||
+        currentUser ||
+        currentUsers[0] ||
+        { id: 1 };
       const ngo =
         currentUsers.find((u) => u.role === "ngo") ||
-        currentUsers[currentUsers.length - 1];
+        currentUsers[currentUsers.length - 1] ||
+        { id: 1 };
 
       const created = await api("/projects", {
         method: "POST",

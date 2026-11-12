@@ -309,6 +309,7 @@ export default function App() {
             {/* Render ONLY the dashboard matching the logged-in user's role */}
             {currentUser.role === "donor" && (
               <DonorWorkspace
+                currentUser={currentUser}
                 projects={projects}
                 users={users}
                 onRefresh={refreshAll}
