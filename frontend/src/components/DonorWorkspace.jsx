@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Sparkles,
   CreditCard,
@@ -32,6 +32,17 @@ export default function DonorWorkspace({
   );
   const [budget, setBudget] = useState(1000);
   const [holdbackPct, setHoldbackPct] = useState(10);
+  const ngoUsers = users.filter((u) => u.role === "ngo");
+  const [selectedNgoId, setSelectedNgoId] = useState(
+    ngoUsers[0]?.id ? String(ngoUsers[0].id) : ""
+  );
+
+  useEffect(() => {
+    if (!selectedNgoId && ngoUsers.length > 0) {
+      setSelectedNgoId(String(ngoUsers[0].id));
+    }
+  }, [ngoUsers, selectedNgoId]);
+
   const [draft, setDraft] = useState(null);
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [fundingGrant, setFundingGrant] = useState(false);
@@ -120,6 +131,7 @@ export default function DonorWorkspace({
         currentUsers[0] ||
         { id: 1 };
       const ngo =
+        (selectedNgoId && currentUsers.find((u) => String(u.id) === String(selectedNgoId))) ||
         currentUsers.find((u) => u.role === "ngo") ||
         currentUsers[currentUsers.length - 1] ||
         { id: 1 };
@@ -472,6 +484,32 @@ export default function DonorWorkspace({
               </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-warmgray-700 mb-1">
+                Assigned NGO Field Partner
+              </label>
+              <select
+                value={selectedNgoId}
+                onChange={(e) => setSelectedNgoId(e.target.value)}
+                className="w-full rounded-xl border border-warmgray-300 p-2.5 text-xs bg-white text-warmgray-900 focus:outline-none focus:ring-2 focus:ring-terracotta-500 font-medium cursor-pointer"
+              >
+                {ngoUsers.length > 0 ? (
+                  ngoUsers.map((ngo) => (
+                    <option key={ngo.id} value={ngo.id}>
+                      {ngo.name} ({ngo.email})
+                    </option>
+                  ))
+                ) : (
+                  <option value="">
+                    Field Partner Organization (Default NGO Partner)
+                  </option>
+                )}
+              </select>
+              <p className="text-[11px] text-warmgray-500 mt-1">
+                The deliverable milestones and PayPal payouts will be locked exclusively to this verified NGO partner.
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-warmgray-700 mb-1">
@@ -524,13 +562,16 @@ export default function DonorWorkspace({
             ) : (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 bg-warmgray-50 p-3 rounded-lg border border-warmgray-200 text-xs">
-                  <span>
-                    Structured Status: <strong className="uppercase text-forest-700">Verified</strong>
-                  </span>
-                  <span>
-                    Retention Holdback:{" "}
-                    <strong>{formatCurrency(draft.holdback_amount)}</strong>
-                  </span>
+                  <div>
+                    <span className="text-warmgray-500">Field Partner: </span>
+                    <strong className="text-warmgray-900 font-semibold">
+                      {ngoUsers.find((u) => String(u.id) === String(selectedNgoId))?.name || "Field Partner Organization"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-warmgray-500">Holdback: </span>
+                    <strong className="text-warmgray-900 font-semibold">{formatCurrency(draft.holdback_amount)}</strong>
+                  </div>
                 </div>
 
                 {draft.clarifying_questions?.length > 0 && (
